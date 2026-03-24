@@ -25,10 +25,13 @@ export default function PlanningPage() {
   const [showForm, setShowForm] = useState(true)
   const contentRef = useRef<HTMLDivElement>(null)
 
-  const questions = questionKeys.map((key) => ({
+  const questions = questionKeys.map((key, i) => ({
     key,
     label: t(`plan.${key}`, locale),
+    hint: t(`plan.${key}h`, locale),
+    example: t(`plan.${key}e`, locale),
     placeholder: t(`plan.${key}p`, locale),
+    required: i < 3,
   }))
 
   useEffect(() => {
@@ -241,21 +244,25 @@ export default function PlanningPage() {
 
       {/* 설문 폼 */}
       {showForm && (
-        <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('plan.questionTitle', locale)}</h2>
-          <p className="text-sm text-gray-500 mb-6">{t('plan.questionDesc', locale)}</p>
+        <div className="glass-card rounded-2xl p-8 border border-outline-variant/20 mb-6">
+          <h2 className="text-xl font-bold text-on-surface mb-2">{t('plan.questionTitle', locale)}</h2>
+          <p className="text-sm text-on-surface-variant mb-8">{t('plan.questionDesc', locale)}</p>
 
-          <div className="space-y-4">
+          <div className="space-y-6">
             {questions.map((q, i) => (
-              <div key={q.key}>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {i + 1}. {q.label}
+              <div key={q.key} className="space-y-2">
+                <label className="block text-sm font-semibold text-on-surface">
+                  {i + 1}. {q.label} {q.required && <span className="text-secondary">*</span>}
                 </label>
+                <p className="text-xs text-on-surface-variant">{q.hint}</p>
+                <div className="text-[11px] text-on-surface-variant/60 bg-surface-container-lowest/50 rounded-lg px-3 py-2 border border-outline-variant/10">
+                  {q.example}
+                </div>
                 <textarea
                   value={questionnaire[q.key] || ''}
                   onChange={(e) => setQuestionnaire(prev => ({ ...prev, [q.key]: e.target.value }))}
-                  rows={2}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none text-sm"
+                  rows={3}
+                  className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant/20 rounded-xl focus:ring-2 focus:ring-primary/40 focus:border-transparent outline-none resize-none text-sm text-on-surface placeholder:text-on-surface-variant/40"
                   placeholder={q.placeholder}
                 />
               </div>
@@ -265,25 +272,28 @@ export default function PlanningPage() {
           <button
             onClick={handleGenerate}
             disabled={isGenerating}
-            className="mt-6 w-full py-3 text-white bg-blue-600 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+            className="mt-8 w-full py-3.5 text-white bg-gradient-to-r from-primary-container to-secondary rounded-xl font-bold shadow-lg shadow-primary-container/30 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50"
           >
             {isGenerating ? t('plan.generating', locale) : t('plan.generate', locale)}
           </button>
+          <p className="mt-3 text-xs text-on-surface-variant/60 text-center">
+            {t('plan.generateNote', locale)}
+          </p>
         </div>
       )}
 
       {/* 기획안 표시 */}
       {displayContent && (
-        <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
+        <div className="glass-card rounded-2xl p-8 border border-outline-variant/20 mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-bold text-on-surface">
               {t('plan.title', locale)} {document ? `v${document.version}` : ''}
             </h2>
             <div className="flex gap-2">
               {!showForm && !document?.is_finalized && (
                 <button
                   onClick={() => setShowForm(true)}
-                  className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
+                  className="px-3 py-1.5 text-xs font-medium text-on-surface-variant bg-surface-container-high rounded-lg hover:bg-surface-container-highest transition-colors"
                 >
                   {t('plan.editQuestions', locale)}
                 </button>
@@ -292,15 +302,15 @@ export default function PlanningPage() {
           </div>
 
           {isGenerating && (
-            <div className="mb-4 flex items-center gap-2 text-sm text-blue-600">
-              <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <div className="mb-4 flex items-center gap-2 text-sm text-secondary">
+              <div className="w-4 h-4 border-2 border-secondary border-t-transparent rounded-full animate-spin" />
               {t('plan.aiWriting', locale)}
             </div>
           )}
 
           <div
             ref={contentRef}
-            className="prose prose-sm max-w-none"
+            className="prose prose-sm prose-invert max-w-none prose-headings:text-on-surface prose-p:text-on-surface-variant prose-strong:text-on-surface prose-li:text-on-surface-variant"
             dangerouslySetInnerHTML={{ __html: marked(displayContent) as string }}
           />
         </div>
@@ -310,47 +320,47 @@ export default function PlanningPage() {
       {document && !document.is_finalized && !isGenerating && (
         <div className="space-y-4">
           {/* 피드백 */}
-          <div className="bg-white rounded-xl p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('plan.feedbackTitle', locale)}</h3>
+          <div className="glass-card rounded-2xl p-6 border border-outline-variant/20">
+            <h3 className="text-sm font-bold text-on-surface mb-3">{t('plan.feedbackTitle', locale)}</h3>
             <textarea
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none text-sm"
+              className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant/20 rounded-xl focus:ring-2 focus:ring-primary/40 focus:border-transparent outline-none resize-none text-sm text-on-surface placeholder:text-on-surface-variant/40"
               placeholder={t('plan.feedbackPlaceholder', locale)}
             />
             <button
               onClick={handleFeedback}
               disabled={!feedback.trim()}
-              className="mt-3 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="mt-3 px-4 py-2 text-sm font-bold text-white bg-primary-container rounded-xl hover:bg-primary-container/80 disabled:opacity-50 transition-colors"
             >
               {t('plan.feedbackSubmit', locale)}
             </button>
           </div>
 
           {/* 딥다이브 */}
-          <div className="bg-white rounded-xl p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('plan.deepDiveTitle', locale)}</h3>
+          <div className="glass-card rounded-2xl p-6 border border-outline-variant/20">
+            <h3 className="text-sm font-bold text-on-surface mb-3">{t('plan.deepDiveTitle', locale)}</h3>
             <input
               value={deepDiveSection}
               onChange={(e) => setDeepDiveSection(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+              className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant/20 rounded-xl focus:ring-2 focus:ring-primary/40 focus:border-transparent outline-none text-sm text-on-surface placeholder:text-on-surface-variant/40"
               placeholder={t('plan.deepDivePlaceholder', locale)}
             />
             <button
               onClick={handleDeepDive}
               disabled={!deepDiveSection.trim()}
-              className="mt-3 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              className="mt-3 px-4 py-2 text-sm font-bold text-white bg-tertiary-container rounded-xl hover:bg-tertiary-container/80 disabled:opacity-50 transition-colors"
             >
               {t('plan.deepDiveSubmit', locale)}
             </button>
           </div>
 
           {/* 확정 */}
-          <div className="bg-white rounded-xl p-6 shadow-sm">
+          <div className="glass-card rounded-2xl p-6 border border-outline-variant/20">
             <button
               onClick={handleFinalize}
-              className="w-full py-3 text-white bg-green-600 rounded-lg font-medium hover:bg-green-700"
+              className="w-full py-3.5 text-white bg-gradient-to-r from-secondary to-secondary/80 rounded-xl font-bold hover:shadow-lg transition-all"
             >
               {t('plan.finalize', locale)}
             </button>
@@ -359,11 +369,11 @@ export default function PlanningPage() {
       )}
 
       {document?.is_finalized && (
-        <div className="bg-green-50 rounded-xl p-6 text-center">
-          <p className="text-green-700 font-medium">{t('plan.finalized', locale)}</p>
+        <div className="glass-card rounded-2xl p-8 border border-secondary/30 text-center bg-secondary/5">
+          <p className="text-secondary font-bold text-lg">{t('plan.finalized', locale)}</p>
           <button
             onClick={() => router.push(`/projects/${projectId}/design`)}
-            className="mt-3 px-6 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 font-medium"
+            className="mt-4 px-8 py-3 text-white bg-secondary rounded-xl hover:bg-secondary/80 font-bold transition-colors"
           >
             {t('plan.goDesign', locale)}
           </button>
