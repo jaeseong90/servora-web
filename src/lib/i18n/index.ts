@@ -71,6 +71,10 @@ const translations: TranslationMap = {
   'modal.cancel': { ko: '취소', en: 'Cancel' },
   'modal.create': { ko: '서비스 생성', en: 'Create Service' },
   'modal.nameRequired': { ko: '서비스 이름을 입력해주세요.', en: 'Please enter a service name.' },
+  'modal.creating': { ko: '서비스를 생성하고 있습니다...', en: 'Creating your service...' },
+  'modal.creatingDesc': { ko: 'AI 기획 환경을 준비 중입니다', en: 'Setting up AI planning environment' },
+  'modal.success': { ko: '서비스가 생성되었습니다!', en: 'Service created!' },
+  'modal.successDesc': { ko: '기획 단계로 이동합니다...', en: 'Moving to planning phase...' },
   'modal.createFailed': { ko: '서비스 생성에 실패했습니다.', en: 'Failed to create service.' },
 
   // ── Sidebar ──

@@ -32,6 +32,8 @@ export default function DashboardPage() {
   const [showNewServiceModal, setShowNewServiceModal] = useState(false)
   const [newServiceName, setNewServiceName] = useState('')
   const [newServiceDesc, setNewServiceDesc] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [createSuccess, setCreateSuccess] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [locale, setLocaleState] = useState<Locale>('ko')
@@ -93,9 +95,11 @@ export default function DashboardPage() {
       return
     }
 
+    setCreating(true)
+
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) { setCreating(false); return }
 
     const { data, error } = await supabase
       .from('projects')
@@ -109,11 +113,18 @@ export default function DashboardPage() {
       .single()
 
     if (error) {
+      setCreating(false)
       alert(t('modal.createFailed', locale))
       return
     }
 
+    // 성공 애니메이션
+    setCreateSuccess(true)
+    await new Promise(r => setTimeout(r, 1500))
+
     setShowNewServiceModal(false)
+    setCreating(false)
+    setCreateSuccess(false)
     setNewServiceName('')
     setNewServiceDesc('')
 
@@ -157,54 +168,86 @@ export default function DashboardPage() {
               <span className="material-symbols-outlined">close</span>
             </button>
             <div className="relative z-10">
-              <div className="w-16 h-16 bg-surface-container-highest rounded-2xl flex items-center justify-center mb-6 shadow-xl border border-outline-variant/30">
-                <span className="material-symbols-outlined text-3xl text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>add_box</span>
-              </div>
-              <h2 className="text-3xl font-black tracking-tight text-on-surface mb-2">{t('modal.title', locale)}</h2>
-              <p className="text-on-surface-variant mb-8">{t('modal.subtitle', locale)}</p>
-              <div className="space-y-6 text-left">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-secondary uppercase tracking-[0.2em]">{t('modal.nameLabel', locale)}</label>
-                  <input
-                    ref={nameInputRef}
-                    className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-4 text-on-surface focus:ring-2 focus:ring-primary/40 focus:outline-none transition-all"
-                    placeholder={t('modal.namePlaceholder', locale)}
-                    type="text"
-                    value={newServiceName}
-                    onChange={(e) => setNewServiceName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleCreateService()
-                    }}
-                  />
+              {creating || createSuccess ? (
+                /* 로딩/성공 상태 */
+                <div className="flex flex-col items-center justify-center py-8">
+                  {createSuccess ? (
+                    <>
+                      <div className="w-20 h-20 rounded-full bg-secondary/20 flex items-center justify-center mb-6 animate-[scale-in_0.3s_ease-out]">
+                        <span className="material-symbols-outlined text-4xl text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                      </div>
+                      <h2 className="text-2xl font-black text-on-surface mb-2">{t('modal.success', locale)}</h2>
+                      <p className="text-on-surface-variant">{t('modal.successDesc', locale)}</p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-20 h-20 rounded-full bg-primary-container/20 flex items-center justify-center mb-6">
+                        <div className="w-10 h-10 border-3 border-primary-container border-t-transparent rounded-full animate-spin" />
+                      </div>
+                      <h2 className="text-2xl font-black text-on-surface mb-2">{t('modal.creating', locale)}</h2>
+                      <p className="text-on-surface-variant">{t('modal.creatingDesc', locale)}</p>
+                      {/* Progress dots */}
+                      <div className="flex gap-2 mt-6">
+                        <div className="w-2 h-2 rounded-full bg-primary-container animate-[pulse_1.4s_ease-in-out_infinite]" />
+                        <div className="w-2 h-2 rounded-full bg-primary-container animate-[pulse_1.4s_ease-in-out_0.2s_infinite]" />
+                        <div className="w-2 h-2 rounded-full bg-primary-container animate-[pulse_1.4s_ease-in-out_0.4s_infinite]" />
+                      </div>
+                    </>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-secondary uppercase tracking-[0.2em]">{t('modal.descLabel', locale)}</label>
-                  <textarea
-                    className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-4 text-on-surface focus:ring-2 focus:ring-primary/40 focus:outline-none transition-all h-32 resize-none"
-                    placeholder={t('modal.descPlaceholder', locale)}
-                    value={newServiceDesc}
-                    onChange={(e) => setNewServiceDesc(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="flex gap-4 mt-10">
-                <button
-                  className="flex-1 py-4 rounded-xl bg-surface-container-highest text-on-surface font-bold hover:bg-surface-container-high transition-colors"
-                  onClick={() => {
-                    setShowNewServiceModal(false)
-                    setNewServiceName('')
-                    setNewServiceDesc('')
-                  }}
-                >
-                  {t('modal.cancel', locale)}
-                </button>
-                <button
-                  className="flex-1 py-4 rounded-xl bg-gradient-to-r from-primary-container to-secondary text-on-primary font-black shadow-lg shadow-primary-container/30 hover:scale-[1.02] active:scale-95 transition-all"
-                  onClick={handleCreateService}
-                >
-                  {t('modal.create', locale)}
-                </button>
-              </div>
+              ) : (
+                /* 입력 폼 */
+                <>
+                  <div className="w-16 h-16 bg-surface-container-highest rounded-2xl flex items-center justify-center mb-6 shadow-xl border border-outline-variant/30">
+                    <span className="material-symbols-outlined text-3xl text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>add_box</span>
+                  </div>
+                  <h2 className="text-3xl font-black tracking-tight text-on-surface mb-2">{t('modal.title', locale)}</h2>
+                  <p className="text-on-surface-variant mb-8">{t('modal.subtitle', locale)}</p>
+                  <div className="space-y-6 text-left">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-secondary uppercase tracking-[0.2em]">{t('modal.nameLabel', locale)}</label>
+                      <input
+                        ref={nameInputRef}
+                        className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-4 text-on-surface focus:ring-2 focus:ring-primary/40 focus:outline-none transition-all"
+                        placeholder={t('modal.namePlaceholder', locale)}
+                        type="text"
+                        value={newServiceName}
+                        onChange={(e) => setNewServiceName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleCreateService()
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-secondary uppercase tracking-[0.2em]">{t('modal.descLabel', locale)}</label>
+                      <textarea
+                        className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-4 text-on-surface focus:ring-2 focus:ring-primary/40 focus:outline-none transition-all h-32 resize-none"
+                        placeholder={t('modal.descPlaceholder', locale)}
+                        value={newServiceDesc}
+                        onChange={(e) => setNewServiceDesc(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-4 mt-10">
+                    <button
+                      className="flex-1 py-4 rounded-xl bg-surface-container-highest text-on-surface font-bold hover:bg-surface-container-high transition-colors"
+                      onClick={() => {
+                        setShowNewServiceModal(false)
+                        setNewServiceName('')
+                        setNewServiceDesc('')
+                      }}
+                    >
+                      {t('modal.cancel', locale)}
+                    </button>
+                    <button
+                      className="flex-1 py-4 rounded-xl bg-gradient-to-r from-primary-container to-secondary text-on-primary font-black shadow-lg shadow-primary-container/30 hover:scale-[1.02] active:scale-95 transition-all"
+                      onClick={handleCreateService}
+                    >
+                      {t('modal.create', locale)}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
