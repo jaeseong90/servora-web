@@ -11,7 +11,7 @@ export async function generateWithGemini(
   userPrompt: string,
   options?: { model?: string; maxTokens?: number; temperature?: number }
 ): Promise<GeminiResponse> {
-  const model = options?.model || 'gemini-2.0-flash'
+  const model = options?.model || 'gemini-2.5-flash'
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.')
 
@@ -55,7 +55,7 @@ export async function* streamWithGemini(
   userPrompt: string,
   options?: { model?: string; maxTokens?: number }
 ): AsyncGenerator<string> {
-  const model = options?.model || 'gemini-2.0-flash'
+  const model = options?.model || 'gemini-2.5-flash'
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.')
 
