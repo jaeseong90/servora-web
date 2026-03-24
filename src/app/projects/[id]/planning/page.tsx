@@ -76,7 +76,6 @@ export default function PlanningPage() {
     setIsGenerating(true)
     setStreamContent('')
     setErrorMsg('')
-    setShowForm(false)
 
     try {
       const response = await fetch(`/api/projects/${projectId}/planning/generate`, {
@@ -111,6 +110,7 @@ export default function PlanningPage() {
             try {
               const data = JSON.parse(line.slice(6))
               if (data.type === 'chunk') {
+                setShowForm(false)
                 setStreamContent(prev => prev + data.text)
               } else if (data.type === 'complete') {
                 const supabase = createClient()
@@ -274,7 +274,15 @@ export default function PlanningPage() {
 
       {/* 설문 폼 */}
       {showForm && (
-        <div className="glass-card rounded-2xl p-8 border border-outline-variant/20 mb-6">
+        <div className="glass-card rounded-2xl p-8 border border-outline-variant/20 mb-6 relative">
+          {/* 생성 중 오버레이 */}
+          {isGenerating && (
+            <div className="absolute inset-0 z-10 bg-background/80 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center gap-4">
+              <div className="w-12 h-12 border-3 border-secondary border-t-transparent rounded-full animate-spin" />
+              <p className="text-on-surface font-bold">{t('plan.generating', locale)}</p>
+              <p className="text-sm text-on-surface-variant">{t('plan.generateNote', locale)}</p>
+            </div>
+          )}
           <h2 className="text-xl font-bold text-on-surface mb-2">{t('plan.questionTitle', locale)}</h2>
           <p className="text-sm text-on-surface-variant mb-8">{t('plan.questionDesc', locale)}</p>
 
