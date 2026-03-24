@@ -255,7 +255,7 @@ export default function PlanningPage() {
   const displayContent = streamContent || document?.content || ''
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       {/* 에러 메시지 */}
       {errorMsg && (
         <div className="mb-6 p-4 rounded-xl bg-error/10 border border-error/20 flex items-start gap-3">
@@ -322,7 +322,7 @@ export default function PlanningPage() {
 
       {/* 기획안 표시 — v1 스타일 2컬럼 레이아웃 */}
       {displayContent && (
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-6 mb-6">
           {/* 메인: 기획안 */}
           <div>
             <div className="glass-card rounded-2xl border border-outline-variant/20 mb-6">
@@ -346,12 +346,20 @@ export default function PlanningPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {!showForm && !document?.is_finalized && (
-                    <button
-                      onClick={() => setShowForm(true)}
-                      className="px-3 py-1.5 text-xs font-medium text-on-surface-variant bg-surface-container-high rounded-lg hover:bg-surface-container-highest transition-colors"
-                    >
-                      {t('plan.editQuestions', locale)}
-                    </button>
+                    <>
+                      <button
+                        onClick={() => setShowForm(true)}
+                        className="px-3 py-1.5 text-xs font-medium text-on-surface-variant bg-surface-container-high rounded-lg hover:bg-surface-container-highest transition-colors"
+                      >
+                        {t('plan.editQuestions', locale)}
+                      </button>
+                      <button
+                        onClick={handleFinalize}
+                        className="px-3 py-1.5 text-xs font-bold text-secondary border border-secondary/30 bg-secondary/10 rounded-lg hover:bg-secondary/20 transition-colors"
+                      >
+                        {locale === 'ko' ? '확정' : 'Finalize'}
+                      </button>
+                    </>
                   )}
                   {document && (
                     <span className="text-xs text-on-surface-variant">
@@ -390,12 +398,6 @@ export default function PlanningPage() {
                     >
                       {t('plan.feedbackSubmit', locale)}
                     </button>
-                    <button
-                      onClick={handleFinalize}
-                      className="px-5 py-2.5 text-sm font-bold text-white bg-secondary rounded-xl hover:bg-secondary/80 transition-colors"
-                    >
-                      {locale === 'ko' ? '기획안 확정' : 'Finalize Plan'}
-                    </button>
                   </div>
                 </div>
 
@@ -405,18 +407,60 @@ export default function PlanningPage() {
                   <p className="text-xs text-on-surface-variant mb-3">
                     {locale === 'ko' ? '특정 섹션을 더 깊이 있게 보강하고 싶다면 선택해주세요.' : 'Select a section to deep dive and enhance.'}
                   </p>
-                  <input
+                  <select
                     value={deepDiveSection}
                     onChange={(e) => setDeepDiveSection(e.target.value)}
-                    className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant/20 rounded-xl focus:ring-2 focus:ring-primary/40 focus:border-transparent outline-none text-sm text-on-surface placeholder:text-on-surface-variant/40"
-                    placeholder={t('plan.deepDivePlaceholder', locale)}
-                  />
+                    className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant/20 rounded-xl focus:ring-2 focus:ring-primary/40 focus:border-transparent outline-none text-sm text-on-surface appearance-none cursor-pointer"
+                  >
+                    <option value="">{locale === 'ko' ? '섹션을 선택하세요' : 'Select a section'}</option>
+                    {[
+                      { ko: '1. 서비스 개요', en: '1. Service Overview' },
+                      { ko: '2. 기획 배경 및 문제 정의', en: '2. Background & Problem' },
+                      { ko: '3. 목표 및 기대 효과', en: '3. Goals & Expected Impact' },
+                      { ko: '4. 주요 사용자 정의', en: '4. Target Users' },
+                      { ko: '5. 사용자 사용 맥락 및 핵심 이용 장면', en: '5. User Context & Scenarios' },
+                      { ko: '6. 서비스 핵심 가치', en: '6. Core Value' },
+                      { ko: '7. 핵심 기능 구성', en: '7. Core Features' },
+                      { ko: '8. 주요 화면 및 정보 구조', en: '8. Key Screens & IA' },
+                      { ko: '9. 운영 및 관리자 기능', en: '9. Admin Features' },
+                      { ko: '10. 계정 / 권한 / 사용자 구분', en: '10. Accounts & Permissions' },
+                      { ko: '11. 운영 정책 및 기본 운영 흐름', en: '11. Operation Policy' },
+                      { ko: '12. 데이터 및 외부 연동 고려사항', en: '12. Data & Integrations' },
+                      { ko: '13. 비기능 요구사항', en: '13. Non-functional Requirements' },
+                      { ko: '14. 제약사항 / 가정 / 리스크', en: '14. Constraints & Risks' },
+                      { ko: '15. 단계별 추진 방향', en: '15. Roadmap' },
+                      { ko: '16. 성공 판단 기준 및 검토 포인트', en: '16. Success Criteria' },
+                    ].map((s) => (
+                      <option key={s.ko} value={s.ko}>{locale === 'ko' ? s.ko : s.en}</option>
+                    ))}
+                  </select>
                   <button
                     onClick={handleDeepDive}
                     disabled={!deepDiveSection.trim()}
                     className="mt-3 px-5 py-2.5 text-sm font-bold text-white bg-tertiary-container rounded-xl hover:bg-tertiary-container/80 disabled:opacity-50 transition-colors"
                   >
                     {t('plan.deepDiveSubmit', locale)}
+                  </button>
+                </div>
+
+                {/* 기획안 확정 */}
+                <div className="glass-card rounded-2xl p-6 border border-secondary/20 bg-secondary/5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="material-symbols-outlined text-secondary">verified</span>
+                    <h3 className="text-sm font-bold text-on-surface">
+                      {locale === 'ko' ? '기획안 확정' : 'Finalize Plan'}
+                    </h3>
+                  </div>
+                  <p className="text-xs text-on-surface-variant mb-4">
+                    {locale === 'ko'
+                      ? '기획안에 만족하시면 확정 후 디자인 단계로 이동합니다. 확정 후에는 수정이 불가합니다.'
+                      : 'Once finalized, you will move to the Design phase. This cannot be undone.'}
+                  </p>
+                  <button
+                    onClick={handleFinalize}
+                    className="w-full py-3 text-sm font-bold text-white bg-gradient-to-r from-secondary to-secondary/80 rounded-xl hover:shadow-lg hover:shadow-secondary/20 transition-all"
+                  >
+                    {locale === 'ko' ? '기획안 확정 → 디자인 단계로' : 'Finalize → Move to Design'}
                   </button>
                 </div>
               </div>
