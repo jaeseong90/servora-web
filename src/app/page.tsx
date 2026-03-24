@@ -2141,7 +2141,7 @@ export default function Home() {
         <p className="hero-sub">하나의 문장만 있어도 시작할 수 있습니다. Servora는 당신의 생각을 AI와 함께 천천히 꺼내고 하나의 서비스로 구체화합니다.</p>
         <div className="btn-row">
           <Link href="/signup"><button className="btn-p">아이디어 꺼내기</button></Link>
-          <Link href="/dashboard"><button className="btn-s">{"아이디어 살펴보기 \u2192"}</button></Link>
+          <a href="#cases"><button className="btn-s">{"아이디어 살펴보기 \u2192"}</button></a>
         </div>
         <div className="hero-visual">
           <div className="hv-browser">
@@ -2753,7 +2753,7 @@ export default function Home() {
         <img src="/img/CTA.gif" className="cta-gif" alt="" />
         <div className="btn-row">
           <Link href="/signup"><button className="btn-p btn--lg">아이디어 꺼내기</button></Link>
-          <Link href="/dashboard"><button className="btn-s btn--lg">{"아이디어 살펴보기 \u2192"}</button></Link>
+          <a href="#cases"><button className="btn-s btn--lg">{"아이디어 살펴보기 \u2192"}</button></a>
         </div>
       </section>
 
