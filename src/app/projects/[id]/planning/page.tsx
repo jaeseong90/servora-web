@@ -17,6 +17,7 @@ export default function PlanningPage() {
   const [locale, setLocaleState] = useState<Locale>('ko')
   const [project, setProject] = useState<Project | null>(null)
   const [questionnaire, setQuestionnaire] = useState<Record<string, string>>({})
+  const [allDocuments, setAllDocuments] = useState<PlanningDocument[]>([])
   const [document, setDocument] = useState<PlanningDocument | null>(null)
   const [streamContent, setStreamContent] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -47,24 +48,36 @@ export default function PlanningPage() {
         .single()
       setProject(proj)
 
-      const { data: doc } = await supabase
+      const { data: docs } = await supabase
         .from('planning_documents')
         .select('*')
         .eq('project_id', projectId)
         .order('version', { ascending: false })
-        .limit(1)
-        .single()
 
-      if (doc) {
-        setDocument(doc)
+      if (docs && docs.length > 0) {
+        setAllDocuments(docs)
+        setDocument(docs[0])
         setShowForm(false)
-        if (doc.questionnaire_data) {
-          setQuestionnaire(doc.questionnaire_data as Record<string, string>)
+        if (docs[0].questionnaire_data) {
+          setQuestionnaire(docs[0].questionnaire_data as Record<string, string>)
         }
       }
     }
     fetchData()
   }, [projectId])
+
+  const reloadDocuments = async () => {
+    const supabase = createClient()
+    const { data: docs } = await supabase
+      .from('planning_documents')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('version', { ascending: false })
+    if (docs && docs.length > 0) {
+      setAllDocuments(docs)
+      setDocument(docs[0])
+    }
+  }
 
   const handleGenerate = async () => {
     const filledCount = Object.values(questionnaire).filter(v => v.trim()).length
@@ -113,15 +126,7 @@ export default function PlanningPage() {
                 setShowForm(false)
                 setStreamContent(prev => prev + data.text)
               } else if (data.type === 'complete') {
-                const supabase = createClient()
-                const { data: doc } = await supabase
-                  .from('planning_documents')
-                  .select('*')
-                  .eq('project_id', projectId)
-                  .order('version', { ascending: false })
-                  .limit(1)
-                  .single()
-                if (doc) setDocument(doc)
+                await reloadDocuments()
               } else if (data.type === 'error') {
                 setErrorMsg(data.message)
                 setShowForm(true)
@@ -166,15 +171,7 @@ export default function PlanningPage() {
               if (data.type === 'chunk') {
                 setStreamContent(prev => prev + data.text)
               } else if (data.type === 'complete') {
-                const supabase = createClient()
-                const { data: doc } = await supabase
-                  .from('planning_documents')
-                  .select('*')
-                  .eq('project_id', projectId)
-                  .order('version', { ascending: false })
-                  .limit(1)
-                  .single()
-                if (doc) setDocument(doc)
+                await reloadDocuments()
                 setFeedback('')
               }
             } catch { /* ignore */ }
@@ -214,15 +211,7 @@ export default function PlanningPage() {
               if (data.type === 'chunk') {
                 setStreamContent(prev => prev + data.text)
               } else if (data.type === 'complete') {
-                const supabase = createClient()
-                const { data: doc } = await supabase
-                  .from('planning_documents')
-                  .select('*')
-                  .eq('project_id', projectId)
-                  .order('version', { ascending: false })
-                  .limit(1)
-                  .single()
-                if (doc) setDocument(doc)
+                await reloadDocuments()
                 setDeepDiveSection('')
               }
             } catch { /* ignore */ }
@@ -444,52 +433,69 @@ export default function PlanningPage() {
                 </div>
 
                 {/* 기획안 확정 */}
-                <div className="glass-card rounded-2xl p-6 border border-secondary/20 bg-secondary/5">
+                <div className="rounded-2xl p-6 border border-primary-container/30 bg-gradient-to-br from-primary-container/10 to-surface-container-low">
                   <div className="flex items-center gap-3 mb-3">
-                    <span className="material-symbols-outlined text-secondary">verified</span>
-                    <h3 className="text-sm font-bold text-on-surface">
-                      {locale === 'ko' ? '기획안 확정' : 'Finalize Plan'}
-                    </h3>
+                    <div className="w-8 h-8 rounded-lg bg-primary-container/20 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-primary text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-on-surface">
+                        {locale === 'ko' ? '기획안 확정' : 'Finalize Plan'}
+                      </h3>
+                      <p className="text-[11px] text-on-surface-variant">
+                        {locale === 'ko' ? '확정 후 디자인 단계로 이동합니다' : 'Move to Design phase after finalizing'}
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-xs text-on-surface-variant mb-4">
-                    {locale === 'ko'
-                      ? '기획안에 만족하시면 확정 후 디자인 단계로 이동합니다. 확정 후에는 수정이 불가합니다.'
-                      : 'Once finalized, you will move to the Design phase. This cannot be undone.'}
-                  </p>
                   <button
                     onClick={handleFinalize}
-                    className="w-full py-3 text-sm font-bold text-white bg-gradient-to-r from-secondary to-secondary/80 rounded-xl hover:shadow-lg hover:shadow-secondary/20 transition-all"
+                    className="w-full py-3.5 text-sm font-bold text-white bg-primary-container rounded-xl hover:bg-primary-container/90 hover:shadow-lg hover:shadow-primary-container/30 active:scale-[0.99] transition-all flex items-center justify-center gap-2"
                   >
-                    {locale === 'ko' ? '기획안 확정 → 디자인 단계로' : 'Finalize → Move to Design'}
+                    <span className="material-symbols-outlined text-lg">task_alt</span>
+                    {locale === 'ko' ? '기획안 확정하기' : 'Finalize Plan'}
+                    <span className="material-symbols-outlined text-lg">arrow_forward</span>
                   </button>
                 </div>
               </div>
             )}
           </div>
 
-          {/* 사이드바: 버전 히스토리 (추후 확장) */}
+          {/* 사이드바: 버전 히스토리 */}
           <div className="hidden lg:block">
             <div className="glass-card rounded-2xl p-5 border border-outline-variant/20 sticky top-8">
               <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-4">
                 {locale === 'ko' ? '버전 히스토리' : 'Version History'}
               </h3>
-              {document && (
-                <div className="space-y-2">
-                  <div className="px-3 py-2.5 rounded-xl bg-primary-container/15 border border-primary-container/20">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-on-surface">v{document.version}</span>
-                      {document.is_finalized && (
-                        <span className="text-[9px] font-bold text-secondary uppercase">Finalized</span>
-                      )}
-                    </div>
-                    <span className="text-[11px] text-on-surface-variant">
-                      {new Date(document.created_at).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US', {
-                        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                      })}
-                    </span>
-                  </div>
-                </div>
-              )}
+              <div className="space-y-1.5 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                {allDocuments.map((doc) => {
+                  const isActive = document?.id === doc.id
+                  return (
+                    <button
+                      key={doc.id}
+                      onClick={() => { setDocument(doc); setStreamContent('') }}
+                      className={`w-full text-left px-3 py-2.5 rounded-xl transition-colors ${
+                        isActive
+                          ? 'bg-primary-container/15 border border-primary-container/20'
+                          : 'hover:bg-surface-container-high/50 border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className={`text-sm font-bold ${isActive ? 'text-on-surface' : 'text-on-surface-variant'}`}>
+                          v{doc.version}
+                        </span>
+                        {doc.is_finalized && (
+                          <span className="text-[9px] font-bold text-secondary uppercase">Finalized</span>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-on-surface-variant">
+                        {new Date(doc.created_at).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US', {
+                          month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                        })}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           </div>
         </div>
