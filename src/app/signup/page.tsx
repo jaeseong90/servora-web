@@ -12,6 +12,7 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -41,10 +42,17 @@ export default function SignupPage() {
     setLoading(true)
 
     const supabase = createClient()
-    const { error } = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signUp({ email, password })
 
     if (error) {
       setError(error.message)
+      setLoading(false)
+      return
+    }
+
+    // 이메일 인증이 필요한 경우 (세션이 없으면 인증 대기 상태)
+    if (data.user && !data.session) {
+      setEmailSent(true)
       setLoading(false)
       return
     }
@@ -61,6 +69,27 @@ export default function SignupPage() {
           <p className="mt-2 text-on-surface-variant">새 계정을 만드세요</p>
         </div>
 
+        {emailSent ? (
+          <div className="glass-card rounded-2xl p-8 border border-outline-variant/20 text-center">
+            <div className="text-4xl mb-4">&#x2709;&#xFE0F;</div>
+            <h2 className="text-xl font-bold text-on-surface mb-2">인증 메일을 보냈습니다</h2>
+            <p className="text-on-surface-variant mb-2">
+              <span className="text-secondary font-medium">{email}</span> 으로 인증 메일을 발송했습니다.
+            </p>
+            <p className="text-sm text-on-surface-variant mb-6">
+              메일함을 확인하고 인증 링크를 클릭해주세요. 인증 완료 후 로그인할 수 있습니다.
+            </p>
+            <Link
+              href="/login"
+              className="inline-block px-6 py-2.5 text-white bg-primary-container rounded-lg font-medium hover:bg-primary-container/80"
+            >
+              로그인 페이지로 이동
+            </Link>
+            <p className="mt-4 text-xs text-on-surface-variant">
+              메일이 오지 않나요? 스팸함을 확인하거나 잠시 후 다시 시도해주세요.
+            </p>
+          </div>
+        ) : (
         <form onSubmit={handleSignup} className="glass-card rounded-2xl p-8 space-y-5 border border-outline-variant/20">
           {error && (
             <div className="p-3 text-sm text-error bg-error/10 rounded-lg">{error}</div>
@@ -124,6 +153,7 @@ export default function SignupPage() {
             <Link href="/login" className="text-secondary hover:underline">로그인</Link>
           </p>
         </form>
+        )}
       </div>
     </div>
   )
