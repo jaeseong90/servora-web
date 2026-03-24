@@ -2,12 +2,14 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
+import { t, getLocale, type Locale } from '@/lib/i18n'
 import type { MvpBuildQueue } from '@/types'
 
 export default function MvpPage() {
   const params = useParams()
   const projectId = params.id as string
 
+  const [locale, setLocaleState] = useState<Locale>('ko')
   const [buildStatus, setBuildStatus] = useState<MvpBuildQueue | null>(null)
   const [loading, setLoading] = useState(false)
   const [generating, setGenerating] = useState(false)
@@ -23,6 +25,7 @@ export default function MvpPage() {
   }, [projectId])
 
   useEffect(() => {
+    setLocaleState(getLocale())
     fetchStatus()
   }, [fetchStatus])
 
@@ -36,7 +39,7 @@ export default function MvpPage() {
   }, [buildStatus, fetchStatus])
 
   const handleGenerate = async () => {
-    if (!confirm('MVP 생성을 요청하시겠습니까?')) return
+    if (!confirm(t('mvp.generateConfirm', locale))) return
 
     setGenerating(true)
     try {
@@ -48,10 +51,10 @@ export default function MvpPage() {
         await fetchStatus()
       } else {
         const data = await response.json()
-        alert(data.error || 'MVP 생성 요청 중 오류가 발생했습니다.')
+        alert(data.error || t('mvp.generateError', locale))
       }
     } catch {
-      alert('MVP 생성 요청 중 오류가 발생했습니다.')
+      alert(t('mvp.generateError', locale))
     } finally {
       setGenerating(false)
     }
@@ -59,44 +62,44 @@ export default function MvpPage() {
 
   const statusDisplay: Record<string, { label: string; color: string; description: string }> = {
     PENDING: {
-      label: '대기 중',
+      label: t('mvp.pending', locale),
       color: 'bg-yellow-100 text-yellow-800',
-      description: 'MVP 생성 요청이 큐에 등록되었습니다. 곧 처리가 시작됩니다.',
+      description: t('mvp.pendingDesc', locale),
     },
     BUILDING: {
-      label: '빌드 중',
+      label: t('mvp.building', locale),
       color: 'bg-blue-100 text-blue-800',
-      description: 'AI가 MVP를 생성하고 있습니다. 잠시만 기다려주세요.',
+      description: t('mvp.buildingDesc', locale),
     },
     COMPLETED: {
-      label: '완료',
+      label: t('mvp.completed', locale),
       color: 'bg-green-100 text-green-800',
-      description: 'MVP가 성공적으로 생성되었습니다!',
+      description: t('mvp.completedDesc', locale),
     },
     FAILED: {
-      label: '실패',
+      label: t('mvp.failed', locale),
       color: 'bg-red-100 text-red-800',
-      description: 'MVP 생성 중 오류가 발생했습니다.',
+      description: t('mvp.failedDesc', locale),
     },
   }
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">MVP 생성</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('mvp.title', locale)}</h1>
 
       {!buildStatus ? (
         <div className="bg-white rounded-xl p-8 shadow-sm text-center">
           <div className="text-4xl mb-4">&#x1F680;</div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">MVP를 생성할 준비가 되었습니다</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">{t('mvp.ready', locale)}</h2>
           <p className="text-sm text-gray-600 mb-6">
-            확정된 기획안과 디자인 선호도를 바탕으로 AI가 MVP를 자동으로 생성합니다.
+            {t('mvp.readyDesc', locale)}
           </p>
           <button
             onClick={handleGenerate}
             disabled={generating}
             className="px-8 py-3 text-white bg-blue-600 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
           >
-            {generating ? '요청 중...' : 'MVP 생성 요청'}
+            {generating ? t('mvp.requesting', locale) : t('mvp.generate', locale)}
           </button>
         </div>
       ) : (
@@ -117,7 +120,7 @@ export default function MvpPage() {
 
             {buildStatus.build_duration_ms && (
               <p className="mt-2 text-xs text-gray-400">
-                빌드 시간: {Math.round(buildStatus.build_duration_ms / 1000)}초
+                {t('mvp.buildTime', locale)}: {Math.round(buildStatus.build_duration_ms / 1000)}{t('common.seconds', locale)}
               </p>
             )}
           </div>
@@ -125,7 +128,7 @@ export default function MvpPage() {
           {/* 결과 */}
           {buildStatus.status === 'COMPLETED' && (
             <div className="bg-green-50 rounded-xl p-6">
-              <h3 className="font-semibold text-green-900 mb-3">배포 완료</h3>
+              <h3 className="font-semibold text-green-900 mb-3">{t('mvp.deployComplete', locale)}</h3>
               {buildStatus.vercel_url && (
                 <div className="mb-3">
                   <label className="block text-xs text-green-700 mb-1">Vercel URL</label>
@@ -141,7 +144,7 @@ export default function MvpPage() {
               )}
               {buildStatus.github_repo && (
                 <div>
-                  <label className="block text-xs text-green-700 mb-1">GitHub 레포</label>
+                  <label className="block text-xs text-green-700 mb-1">GitHub</label>
                   <a
                     href={buildStatus.github_repo}
                     target="_blank"
@@ -158,14 +161,14 @@ export default function MvpPage() {
           {/* 에러 */}
           {buildStatus.status === 'FAILED' && buildStatus.error_message && (
             <div className="bg-red-50 rounded-xl p-6">
-              <h3 className="font-semibold text-red-900 mb-2">오류 상세</h3>
+              <h3 className="font-semibold text-red-900 mb-2">{t('mvp.errorDetail', locale)}</h3>
               <p className="text-sm text-red-700">{buildStatus.error_message}</p>
               <button
                 onClick={handleGenerate}
                 disabled={generating}
                 className="mt-4 px-6 py-2 text-white bg-red-600 rounded-lg font-medium hover:bg-red-700 disabled:opacity-50"
               >
-                다시 시도
+                {t('mvp.retry', locale)}
               </button>
             </div>
           )}

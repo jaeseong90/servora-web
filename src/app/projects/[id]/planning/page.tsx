@@ -4,26 +4,17 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { marked } from 'marked'
+import { t, getLocale, type Locale } from '@/lib/i18n'
 import type { Project, PlanningDocument, QuestionnaireData } from '@/types'
 
-const questions = [
-  { key: 'q1', label: '서비스 핵심 아이디어', placeholder: '어떤 서비스를 만들고 싶으신가요?' },
-  { key: 'q2', label: '타겟 사용자', placeholder: '누구를 위한 서비스인가요?' },
-  { key: 'q3', label: '핵심 기능 3가지', placeholder: '가장 중요한 기능 3가지를 알려주세요.' },
-  { key: 'q4', label: '차별화 포인트', placeholder: '기존 서비스와 어떻게 다른가요?' },
-  { key: 'q5', label: '수익 모델', placeholder: '어떻게 수익을 낼 계획인가요?' },
-  { key: 'q6', label: '사용자 여정', placeholder: '사용자가 서비스를 어떻게 이용하나요?' },
-  { key: 'q7', label: '필수 데이터', placeholder: '서비스에 꼭 필요한 데이터는 무엇인가요?' },
-  { key: 'q8', label: '외부 연동', placeholder: '외부 서비스와 연동이 필요한가요?' },
-  { key: 'q9', label: 'MVP 론칭 범위', placeholder: '처음에 어디까지 만들고 싶으신가요?' },
-  { key: 'q10', label: '성공 지표', placeholder: '성공을 어떻게 측정할 건가요?' },
-]
+const questionKeys = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q9', 'q10']
 
 export default function PlanningPage() {
   const params = useParams()
   const router = useRouter()
   const projectId = params.id as string
 
+  const [locale, setLocaleState] = useState<Locale>('ko')
   const [project, setProject] = useState<Project | null>(null)
   const [questionnaire, setQuestionnaire] = useState<Record<string, string>>({})
   const [document, setDocument] = useState<PlanningDocument | null>(null)
@@ -34,8 +25,15 @@ export default function PlanningPage() {
   const [showForm, setShowForm] = useState(true)
   const contentRef = useRef<HTMLDivElement>(null)
 
+  const questions = questionKeys.map((key) => ({
+    key,
+    label: t(`plan.${key}`, locale),
+    placeholder: t(`plan.${key}p`, locale),
+  }))
+
   useEffect(() => {
     const fetchData = async () => {
+      setLocaleState(getLocale())
       const supabase = createClient()
 
       const { data: proj } = await supabase
@@ -67,7 +65,7 @@ export default function PlanningPage() {
   const handleGenerate = async () => {
     const filledCount = Object.values(questionnaire).filter(v => v.trim()).length
     if (filledCount < 3) {
-      alert('최소 3개 이상의 질문에 답해주세요.')
+      alert(t('plan.minQuestions', locale))
       return
     }
 
@@ -98,7 +96,6 @@ export default function PlanningPage() {
               if (data.type === 'chunk') {
                 setStreamContent(prev => prev + data.text)
               } else if (data.type === 'complete') {
-                // 문서 새로 로드
                 const supabase = createClient()
                 const { data: doc } = await supabase
                   .from('planning_documents')
@@ -109,14 +106,14 @@ export default function PlanningPage() {
                   .single()
                 if (doc) setDocument(doc)
               } else if (data.type === 'error') {
-                alert(`오류: ${data.message}`)
+                alert(`${data.message}`)
               }
             } catch { /* ignore */ }
           }
         }
       }
     } catch (err) {
-      alert('기획안 생성 중 오류가 발생했습니다.')
+      alert(t('plan.errorGenerate', locale))
     } finally {
       setIsGenerating(false)
     }
@@ -219,7 +216,7 @@ export default function PlanningPage() {
   }
 
   const handleFinalize = async () => {
-    if (!confirm('기획안을 확정하시겠습니까? 확정 후에는 디자인 단계로 이동합니다.')) return
+    if (!confirm(t('plan.finalizeConfirm', locale))) return
 
     try {
       const response = await fetch(`/api/projects/${projectId}/planning/finalize`, {
@@ -229,10 +226,10 @@ export default function PlanningPage() {
         router.push(`/projects/${projectId}/design`)
         router.refresh()
       } else {
-        alert('확정 중 오류가 발생했습니다.')
+        alert(t('plan.errorFinalize', locale))
       }
     } catch {
-      alert('확정 중 오류가 발생했습니다.')
+      alert(t('plan.errorFinalize', locale))
     }
   }
 
@@ -240,13 +237,13 @@ export default function PlanningPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">기획</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('plan.title', locale)}</h1>
 
       {/* 설문 폼 */}
       {showForm && (
         <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">서비스 기획 질문</h2>
-          <p className="text-sm text-gray-500 mb-6">최소 3개 이상 답변해주세요. 자세할수록 좋은 기획안이 나옵니다.</p>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('plan.questionTitle', locale)}</h2>
+          <p className="text-sm text-gray-500 mb-6">{t('plan.questionDesc', locale)}</p>
 
           <div className="space-y-4">
             {questions.map((q, i) => (
@@ -270,7 +267,7 @@ export default function PlanningPage() {
             disabled={isGenerating}
             className="mt-6 w-full py-3 text-white bg-blue-600 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
           >
-            {isGenerating ? 'AI가 기획안을 작성 중...' : 'AI 기획안 생성'}
+            {isGenerating ? t('plan.generating', locale) : t('plan.generate', locale)}
           </button>
         </div>
       )}
@@ -280,7 +277,7 @@ export default function PlanningPage() {
         <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">
-              기획안 {document ? `v${document.version}` : ''}
+              {t('plan.title', locale)} {document ? `v${document.version}` : ''}
             </h2>
             <div className="flex gap-2">
               {!showForm && !document?.is_finalized && (
@@ -288,7 +285,7 @@ export default function PlanningPage() {
                   onClick={() => setShowForm(true)}
                   className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
                 >
-                  질문 수정
+                  {t('plan.editQuestions', locale)}
                 </button>
               )}
             </div>
@@ -297,7 +294,7 @@ export default function PlanningPage() {
           {isGenerating && (
             <div className="mb-4 flex items-center gap-2 text-sm text-blue-600">
               <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-              AI가 작성 중...
+              {t('plan.aiWriting', locale)}
             </div>
           )}
 
@@ -314,38 +311,38 @@ export default function PlanningPage() {
         <div className="space-y-4">
           {/* 피드백 */}
           <div className="bg-white rounded-xl p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">피드백 반영</h3>
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('plan.feedbackTitle', locale)}</h3>
             <textarea
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               rows={3}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none text-sm"
-              placeholder="수정하고 싶은 내용을 입력하세요"
+              placeholder={t('plan.feedbackPlaceholder', locale)}
             />
             <button
               onClick={handleFeedback}
               disabled={!feedback.trim()}
               className="mt-3 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
-              피드백 반영
+              {t('plan.feedbackSubmit', locale)}
             </button>
           </div>
 
           {/* 딥다이브 */}
           <div className="bg-white rounded-xl p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">섹션 딥다이브</h3>
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('plan.deepDiveTitle', locale)}</h3>
             <input
               value={deepDiveSection}
               onChange={(e) => setDeepDiveSection(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
-              placeholder="깊이 분석할 섹션 번호 또는 이름 (예: 7. 핵심 기능 구성)"
+              placeholder={t('plan.deepDivePlaceholder', locale)}
             />
             <button
               onClick={handleDeepDive}
               disabled={!deepDiveSection.trim()}
               className="mt-3 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50"
             >
-              딥다이브
+              {t('plan.deepDiveSubmit', locale)}
             </button>
           </div>
 
@@ -355,7 +352,7 @@ export default function PlanningPage() {
               onClick={handleFinalize}
               className="w-full py-3 text-white bg-green-600 rounded-lg font-medium hover:bg-green-700"
             >
-              기획안 확정 &rarr; 디자인 단계로 이동
+              {t('plan.finalize', locale)}
             </button>
           </div>
         </div>
@@ -363,12 +360,12 @@ export default function PlanningPage() {
 
       {document?.is_finalized && (
         <div className="bg-green-50 rounded-xl p-6 text-center">
-          <p className="text-green-700 font-medium">기획안이 확정되었습니다.</p>
+          <p className="text-green-700 font-medium">{t('plan.finalized', locale)}</p>
           <button
             onClick={() => router.push(`/projects/${projectId}/design`)}
             className="mt-3 px-6 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 font-medium"
           >
-            디자인 단계로 이동
+            {t('plan.goDesign', locale)}
           </button>
         </div>
       )}

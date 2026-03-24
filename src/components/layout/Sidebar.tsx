@@ -3,24 +3,22 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
+import { t, type Locale } from '@/lib/i18n'
 
 interface SidebarProps {
   userName: string
   userEmail: string
   onNewService: () => void
   onLogout: () => void
+  locale?: Locale
 }
 
-export default function Sidebar({ userName, userEmail, onNewService, onLogout }: SidebarProps) {
+export default function Sidebar({ userName, userEmail, onNewService, onLogout, locale = 'ko' }: SidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [showUserPopup, setShowUserPopup] = useState(false)
 
   const isDashboard = pathname === '/dashboard'
-
-  const toggleSidebar = () => {
-    setCollapsed(!collapsed)
-  }
 
   return (
     <aside
@@ -44,7 +42,7 @@ export default function Sidebar({ userName, userEmail, onNewService, onLogout }:
               )}
             </Link>
             <button
-              onClick={toggleSidebar}
+              onClick={() => setCollapsed(!collapsed)}
               className="text-on-surface-variant hover:text-secondary transition-colors p-1 rounded-md hover:bg-surface-container-high"
             >
               <span className="material-symbols-outlined">
@@ -155,8 +153,8 @@ export default function Sidebar({ userName, userEmail, onNewService, onLogout }:
                 className="w-full flex items-center justify-between p-3 bg-surface-container-highest/40 rounded-xl border border-outline-variant/10 hover:bg-surface-container-highest/60 transition-colors group"
               >
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold text-secondary">Upgrade Plan</span>
-                  <span className="text-[10px] text-on-surface-variant">Unlock Enterprise</span>
+                  <span className="text-xs font-bold text-secondary">{t('nav.upgrade', locale)}</span>
+                  <span className="text-[10px] text-on-surface-variant">{t('nav.unlockEnterprise', locale)}</span>
                 </div>
                 <span className="material-symbols-outlined text-secondary group-hover:translate-x-1 transition-transform text-sm">
                   upgrade
@@ -166,11 +164,11 @@ export default function Sidebar({ userName, userEmail, onNewService, onLogout }:
           )}
           <a href="#" className={`flex items-center gap-4 text-on-surface-variant hover:text-on-surface py-2 px-6 transition-colors text-xs font-medium ${collapsed ? 'justify-center px-0' : ''}`}>
             <span className="material-symbols-outlined text-[18px]">mail</span>
-            {!collapsed && <span>Contact</span>}
+            {!collapsed && <span>{t('nav.contact', locale)}</span>}
           </a>
           <a href="#" className={`flex items-center gap-4 text-on-surface-variant hover:text-on-surface py-2 px-6 transition-colors text-xs font-medium ${collapsed ? 'justify-center px-0' : ''}`}>
             <span className="material-symbols-outlined text-[18px]">support_agent</span>
-            {!collapsed && <span>Support</span>}
+            {!collapsed && <span>{t('nav.support', locale)}</span>}
           </a>
 
           {/* User Profile Section */}
@@ -200,11 +198,11 @@ export default function Sidebar({ userName, userEmail, onNewService, onLogout }:
                 </div>
                 <div className="py-2">
                   <a href="#" className="flex items-center gap-3 px-4 py-2.5 text-xs text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors">
-                    <span className="material-symbols-outlined text-lg">person</span> 내 정보
+                    <span className="material-symbols-outlined text-lg">person</span> {t('nav.myInfo', locale)}
                   </a>
                   <a href="#" className="flex items-center justify-between px-4 py-2.5 text-xs text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors">
                     <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-lg">database</span> 잔여 크레딧
+                      <span className="material-symbols-outlined text-lg">database</span> {t('nav.remainCredits', locale)}
                     </div>
                     <span className="text-[10px] font-bold text-secondary">2,450</span>
                   </a>
@@ -217,7 +215,7 @@ export default function Sidebar({ userName, userEmail, onNewService, onLogout }:
                     onClick={onLogout}
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-error/80 hover:text-error hover:bg-error/10 transition-colors"
                   >
-                    <span className="material-symbols-outlined text-lg">logout</span> Logout
+                    <span className="material-symbols-outlined text-lg">logout</span> {t('nav.logout', locale)}
                   </button>
                 </div>
               </div>

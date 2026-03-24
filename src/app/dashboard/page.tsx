@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { Project } from '@/types'
 import Sidebar from '@/components/layout/Sidebar'
+import { t, getLocale, setLocale, type Locale } from '@/lib/i18n'
 
 const statusConfig: Record<string, { label: string; step: number; color: string; hoverColor: string }> = {
   PLANNING: { label: 'Planning', step: 0, color: 'primary', hoverColor: 'hover:border-primary/40' },
@@ -32,6 +33,7 @@ export default function DashboardPage() {
   const [newServiceName, setNewServiceName] = useState('')
   const [newServiceDesc, setNewServiceDesc] = useState('')
   const [showNotifications, setShowNotifications] = useState(false)
+  const [locale, setLocaleState] = useState<Locale>('ko')
   const notifyRef = useRef<HTMLDivElement>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
 
@@ -54,6 +56,7 @@ export default function DashboardPage() {
 
       setProjects(data || [])
       setLoading(false)
+      setLocaleState(getLocale())
     }
 
     fetchData()
@@ -85,7 +88,7 @@ export default function DashboardPage() {
 
   const handleCreateService = async () => {
     if (!newServiceName.trim()) {
-      alert('서비스 이름을 입력해주세요.')
+      alert(t('modal.nameRequired', locale))
       return
     }
 
@@ -105,7 +108,7 @@ export default function DashboardPage() {
       .single()
 
     if (error) {
-      alert('서비스 생성에 실패했습니다.')
+      alert(t('modal.createFailed', locale))
       return
     }
 
@@ -156,15 +159,15 @@ export default function DashboardPage() {
               <div className="w-16 h-16 bg-surface-container-highest rounded-2xl flex items-center justify-center mb-6 shadow-xl border border-outline-variant/30">
                 <span className="material-symbols-outlined text-3xl text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>add_box</span>
               </div>
-              <h2 className="text-3xl font-black tracking-tight text-on-surface mb-2">새 서비스 만들기</h2>
-              <p className="text-on-surface-variant mb-8">혁신적인 비즈니스 아이디어를 Servora와 함께 시작하세요.</p>
+              <h2 className="text-3xl font-black tracking-tight text-on-surface mb-2">{t('modal.title', locale)}</h2>
+              <p className="text-on-surface-variant mb-8">{t('modal.subtitle', locale)}</p>
               <div className="space-y-6 text-left">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-secondary uppercase tracking-[0.2em]">서비스 이름</label>
+                  <label className="text-[10px] font-bold text-secondary uppercase tracking-[0.2em]">{t('modal.nameLabel', locale)}</label>
                   <input
                     ref={nameInputRef}
                     className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-4 text-on-surface focus:ring-2 focus:ring-primary/40 focus:outline-none transition-all"
-                    placeholder="예: Ethereal E-commerce UI"
+                    placeholder={t('modal.namePlaceholder', locale)}
                     type="text"
                     value={newServiceName}
                     onChange={(e) => setNewServiceName(e.target.value)}
@@ -174,10 +177,10 @@ export default function DashboardPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-secondary uppercase tracking-[0.2em]">서비스 설명</label>
+                  <label className="text-[10px] font-bold text-secondary uppercase tracking-[0.2em]">{t('modal.descLabel', locale)}</label>
                   <textarea
                     className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-4 text-on-surface focus:ring-2 focus:ring-primary/40 focus:outline-none transition-all h-32 resize-none"
-                    placeholder="서비스의 목적과 핵심 가치를 입력해주세요..."
+                    placeholder={t('modal.descPlaceholder', locale)}
                     value={newServiceDesc}
                     onChange={(e) => setNewServiceDesc(e.target.value)}
                   />
@@ -192,13 +195,13 @@ export default function DashboardPage() {
                     setNewServiceDesc('')
                   }}
                 >
-                  취소
+                  {t('modal.cancel', locale)}
                 </button>
                 <button
                   className="flex-1 py-4 rounded-xl bg-gradient-to-r from-primary-container to-secondary text-on-primary font-black shadow-lg shadow-primary-container/30 hover:scale-[1.02] active:scale-95 transition-all"
                   onClick={handleCreateService}
                 >
-                  서비스 생성
+                  {t('modal.create', locale)}
                 </button>
               </div>
             </div>
@@ -212,6 +215,7 @@ export default function DashboardPage() {
         userEmail={userEmail}
         onNewService={() => setShowNewServiceModal(true)}
         onLogout={handleLogout}
+        locale={locale}
       />
 
       {/* Main Content Area */}
@@ -247,16 +251,16 @@ export default function DashboardPage() {
               {showNotifications && (
                 <div className="absolute top-full right-0 mt-3 w-96 glass-popup rounded-2xl overflow-hidden z-[60]">
                   <div className="p-4 border-b border-outline-variant/10 flex justify-between items-center">
-                    <h3 className="text-sm font-bold text-on-surface">Recent Activity</h3>
-                    <button className="text-[10px] text-secondary font-bold hover:underline">Mark all as read</button>
+                    <h3 className="text-sm font-bold text-on-surface">{t('notify.title', locale)}</h3>
+                    <button className="text-[10px] text-secondary font-bold hover:underline">{t('notify.markRead', locale)}</button>
                   </div>
                   <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
                     <table className="w-full text-left text-[11px]">
                       <thead className="bg-surface-container-highest/30 text-outline sticky top-0">
                         <tr>
-                          <th className="px-4 py-2 font-bold uppercase tracking-wider">서비스</th>
-                          <th className="px-4 py-2 font-bold uppercase tracking-wider">작업 시간</th>
-                          <th className="px-4 py-2 font-bold uppercase tracking-wider">작업 내용</th>
+                          <th className="px-4 py-2 font-bold uppercase tracking-wider">{t('notify.colService', locale)}</th>
+                          <th className="px-4 py-2 font-bold uppercase tracking-wider">{t('notify.colTime', locale)}</th>
+                          <th className="px-4 py-2 font-bold uppercase tracking-wider">{t('notify.colAction', locale)}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-outline-variant/10">
@@ -272,7 +276,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="p-3 bg-surface-container-highest/20 text-center border-t border-outline-variant/10">
                     <button className="text-[10px] text-outline hover:text-on-surface transition-colors font-bold uppercase tracking-widest">
-                      View all activity
+                      {t('notify.viewAll', locale)}
                     </button>
                   </div>
                 </div>
@@ -285,7 +289,7 @@ export default function DashboardPage() {
         <div className="relative z-10 pt-24 px-8 pb-12 flex-1 flex flex-col">
           {loading ? (
             <div className="flex items-center justify-center flex-1">
-              <div className="text-on-surface-variant text-lg">로딩 중...</div>
+              <div className="text-on-surface-variant text-lg">{t('dash.loading', locale)}</div>
             </div>
           ) : (
             <>
@@ -295,17 +299,17 @@ export default function DashboardPage() {
                 <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
                   <div>
                     <h1 className="text-4xl font-black text-on-surface tracking-tight mb-2">
-                      안녕하세요, {userName}님! 👋
+                      {t('dash.welcome', locale).replace('{name}', userName)}
                     </h1>
-                    <p className="text-on-surface-variant text-lg">오늘도 Servora와 함께 혁신적인 서비스를 시작해보세요.</p>
+                    <p className="text-on-surface-variant text-lg">{t('dash.subtitle', locale)}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
                     <div className="bg-surface-container/50 backdrop-blur-md p-6 rounded-2xl border border-outline-variant/10">
-                      <div className="text-on-surface-variant text-xs font-bold mb-1 uppercase tracking-widest">보유 크레딧</div>
+                      <div className="text-on-surface-variant text-xs font-bold mb-1 uppercase tracking-widest">{t('dash.credits', locale)}</div>
                       <div className="text-3xl font-black text-secondary">2,450</div>
                     </div>
                     <div className="bg-surface-container/50 backdrop-blur-md p-6 rounded-2xl border border-outline-variant/10">
-                      <div className="text-on-surface-variant text-xs font-bold mb-1 uppercase tracking-widest">활성 서비스</div>
+                      <div className="text-on-surface-variant text-xs font-bold mb-1 uppercase tracking-widest">{t('dash.activeServices', locale)}</div>
                       <div className="text-3xl font-black text-primary">
                         {String(activeCount).padStart(2, '0')}
                       </div>
@@ -326,8 +330,8 @@ export default function DashboardPage() {
                     <span className="material-symbols-outlined text-3xl text-on-primary">add_box</span>
                   </div>
                   <div className="relative z-10">
-                    <h3 className="text-xl font-bold mb-2">새 서비스 만들기</h3>
-                    <p className="text-on-surface-variant text-sm">AI 가이드를 따라 몇 분 만에 완벽한 워크플로우를 구성하세요.</p>
+                    <h3 className="text-xl font-bold mb-2">{t('dash.newService', locale)}</h3>
+                    <p className="text-on-surface-variant text-sm">{t('dash.newServiceDesc', locale)}</p>
                   </div>
                 </button>
 
@@ -337,10 +341,10 @@ export default function DashboardPage() {
                     <div className="flex flex-col">
                       <h3 className="text-lg font-bold flex items-center gap-2">
                         <span className="material-symbols-outlined text-secondary">analytics</span>
-                        최근 워크플로우 요약
+                        {t('dash.workflowSummary', locale)}
                       </h3>
                       <p className="text-sm text-on-surface-variant ml-8 font-medium">
-                        {latestProject ? latestProject.title : '서비스를 생성해주세요'}
+                        {latestProject ? latestProject.title : t('dash.noService', locale)}
                       </p>
                     </div>
                     {latestProject && (
@@ -348,7 +352,7 @@ export default function DashboardPage() {
                         href={`/projects/${latestProject.id}/planning`}
                         className="text-xs text-secondary font-bold hover:underline flex items-center gap-1"
                       >
-                        상세 보기 <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                        {t('dash.detail', locale)} <span className="material-symbols-outlined text-xs">arrow_forward</span>
                       </Link>
                     )}
                   </div>
@@ -394,8 +398,8 @@ export default function DashboardPage() {
               <div>
                 <div className="flex justify-between items-end mb-8">
                   <div>
-                    <h2 className="text-2xl font-black text-on-surface mb-1">내 서비스</h2>
-                    <p className="text-on-surface-variant text-sm">진행 중인 모든 서비스를 관리합니다.</p>
+                    <h2 className="text-2xl font-black text-on-surface mb-1">{t('dash.myServices', locale)}</h2>
+                    <p className="text-on-surface-variant text-sm">{t('dash.myServicesDesc', locale)}</p>
                   </div>
                   <div className="flex gap-2">
                     <button className="p-2.5 rounded-xl bg-surface-container-high border border-outline-variant/10 text-on-surface-variant hover:text-secondary transition-colors">
@@ -468,9 +472,9 @@ export default function DashboardPage() {
                         {/* Footer */}
                         <div className="flex items-center justify-between pt-4 border-t border-outline-variant/5">
                           <div className="flex flex-col">
-                            <span className="text-[9px] text-outline font-bold uppercase tracking-widest mb-0.5">마지막 수정일자</span>
+                            <span className="text-[9px] text-outline font-bold uppercase tracking-widest mb-0.5">{t('dash.lastModified', locale)}</span>
                             <span className="text-[11px] text-on-surface-variant font-medium">
-                              {new Date(project.updated_at || project.created_at).toLocaleDateString('ko-KR', {
+                              {new Date(project.updated_at || project.created_at).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US', {
                                 year: 'numeric',
                                 month: '2-digit',
                                 day: '2-digit',
@@ -480,7 +484,7 @@ export default function DashboardPage() {
                           <span className={`px-4 py-2 ${
                             cfg.color === 'secondary' ? 'bg-secondary text-on-secondary' : 'bg-primary-container text-white'
                           } text-xs font-bold rounded-xl flex items-center gap-2`}>
-                            계속하기 <span className="material-symbols-outlined text-sm">play_arrow</span>
+                            {t('dash.continue', locale)} <span className="material-symbols-outlined text-sm">play_arrow</span>
                           </span>
                         </div>
                       </Link>
@@ -495,9 +499,9 @@ export default function DashboardPage() {
                     <div className="h-16 w-16 rounded-full bg-surface-container flex items-center justify-center mb-6 text-on-surface-variant/40 group-hover:scale-110 transition-transform">
                       <span className="material-symbols-outlined text-4xl">inventory_2</span>
                     </div>
-                    <h4 className="font-bold text-on-surface-variant mb-6">새로운 아이디어가 있나요?</h4>
+                    <h4 className="font-bold text-on-surface-variant mb-6">{t('dash.newIdea', locale)}</h4>
                     <span className="flex items-center gap-2 py-2.5 px-6 rounded-full bg-surface-container-highest text-on-surface text-sm font-bold border border-outline-variant/30 group-hover:border-secondary/50 transition-all">
-                      <span className="material-symbols-outlined text-base">add</span> 서비스 추가
+                      <span className="material-symbols-outlined text-base">add</span> {t('dash.addService', locale)}
                     </span>
                   </div>
                 </div>

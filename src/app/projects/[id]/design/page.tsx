@@ -3,18 +3,40 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { t, getLocale, type Locale } from '@/lib/i18n'
 
-const toneOptions = ['모던', '클래식', '미니멀', '활기찬', '차분한', '전문적']
-const colorModes = ['LIGHT', 'DARK']
-const layoutStyles = ['SIDEBAR', 'TOP_NAV', 'MINIMAL']
-const fontStyles = ['깔끔한 고딕', '부드러운 둥근체', '세련된 세리프', '모던 산세리프']
-const cornerStyles = ['직각', '약간 둥근', '많이 둥근', '완전 둥근']
+const toneKeys = [
+  { value: '모던', key: 'design.toneModern' },
+  { value: '클래식', key: 'design.toneClassic' },
+  { value: '미니멀', key: 'design.toneMinimal' },
+  { value: '활기찬', key: 'design.toneVibrant' },
+  { value: '차분한', key: 'design.toneCalm' },
+  { value: '전문적', key: 'design.toneProfessional' },
+]
+
+const colorModes = ['LIGHT', 'DARK'] as const
+const layoutStyles = ['SIDEBAR', 'TOP_NAV', 'MINIMAL'] as const
+
+const fontKeys = [
+  { value: '깔끔한 고딕', key: 'design.fontGothic' },
+  { value: '부드러운 둥근체', key: 'design.fontRounded' },
+  { value: '세련된 세리프', key: 'design.fontSerif' },
+  { value: '모던 산세리프', key: 'design.fontSansSerif' },
+]
+
+const cornerKeys = [
+  { value: '직각', key: 'design.cornerSquare' },
+  { value: '약간 둥근', key: 'design.cornerSlightRound' },
+  { value: '많이 둥근', key: 'design.cornerRound' },
+  { value: '완전 둥근', key: 'design.cornerFull' },
+]
 
 export default function DesignPage() {
   const params = useParams()
   const router = useRouter()
   const projectId = params.id as string
 
+  const [locale, setLocaleState] = useState<Locale>('ko')
   const [designTone, setDesignTone] = useState('모던')
   const [primaryColor, setPrimaryColor] = useState('#2563eb')
   const [secondaryColor, setSecondaryColor] = useState('#8b5cf6')
@@ -26,6 +48,7 @@ export default function DesignPage() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
+    setLocaleState(getLocale())
     const fetchPreference = async () => {
       const supabase = createClient()
       const { data } = await supabase
@@ -70,33 +93,44 @@ export default function DesignPage() {
         router.push(`/projects/${projectId}/mvp`)
         router.refresh()
       } else {
-        alert('저장 중 오류가 발생했습니다.')
+        alert(t('design.saveError', locale))
       }
     } finally {
       setLoading(false)
     }
   }
 
+  const layoutLabelMap: Record<string, string> = {
+    SIDEBAR: t('design.sidebar', locale),
+    TOP_NAV: t('design.topNav', locale),
+    MINIMAL: t('design.minimal', locale),
+  }
+
+  const colorModeLabelMap: Record<string, string> = {
+    LIGHT: t('design.light', locale),
+    DARK: t('design.dark', locale),
+  }
+
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">디자인 선호도</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('design.title', locale)}</h1>
 
       <div className="space-y-6">
         {/* 디자인 톤 */}
         <div className="bg-white rounded-xl p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">디자인 톤</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('design.tone', locale)}</h3>
           <div className="grid grid-cols-3 gap-2">
-            {toneOptions.map((tone) => (
+            {toneKeys.map((tone) => (
               <button
-                key={tone}
-                onClick={() => setDesignTone(tone)}
+                key={tone.value}
+                onClick={() => setDesignTone(tone.value)}
                 className={`px-4 py-2 text-sm rounded-lg border ${
-                  designTone === tone
+                  designTone === tone.value
                     ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
                     : 'border-gray-200 text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                {tone}
+                {t(tone.key, locale)}
               </button>
             ))}
           </div>
@@ -104,10 +138,10 @@ export default function DesignPage() {
 
         {/* 색상 */}
         <div className="bg-white rounded-xl p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">브랜드 색상</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('design.brandColor', locale)}</h3>
           <div className="flex gap-6">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">주요 색상</label>
+              <label className="block text-xs text-gray-500 mb-1">{t('design.primaryColor', locale)}</label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -119,7 +153,7 @@ export default function DesignPage() {
               </div>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">보조 색상</label>
+              <label className="block text-xs text-gray-500 mb-1">{t('design.secondaryColor', locale)}</label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -135,7 +169,7 @@ export default function DesignPage() {
 
         {/* 색상 모드 */}
         <div className="bg-white rounded-xl p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">색상 모드</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('design.colorMode', locale)}</h3>
           <div className="flex gap-2">
             {colorModes.map((mode) => (
               <button
@@ -147,7 +181,7 @@ export default function DesignPage() {
                     : 'border-gray-200 text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                {mode === 'LIGHT' ? '라이트' : '다크'}
+                {colorModeLabelMap[mode]}
               </button>
             ))}
           </div>
@@ -155,7 +189,7 @@ export default function DesignPage() {
 
         {/* 레이아웃 */}
         <div className="bg-white rounded-xl p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">레이아웃 스타일</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('design.layoutStyle', locale)}</h3>
           <div className="grid grid-cols-3 gap-2">
             {layoutStyles.map((layout) => (
               <button
@@ -167,7 +201,7 @@ export default function DesignPage() {
                     : 'border-gray-200 text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                {layout === 'SIDEBAR' ? '사이드바' : layout === 'TOP_NAV' ? '상단 네비' : '미니멀'}
+                {layoutLabelMap[layout]}
               </button>
             ))}
           </div>
@@ -175,19 +209,19 @@ export default function DesignPage() {
 
         {/* 폰트 */}
         <div className="bg-white rounded-xl p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">폰트 스타일</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('design.fontStyle', locale)}</h3>
           <div className="grid grid-cols-2 gap-2">
-            {fontStyles.map((font) => (
+            {fontKeys.map((font) => (
               <button
-                key={font}
-                onClick={() => setFontStyle(font)}
+                key={font.value}
+                onClick={() => setFontStyle(font.value)}
                 className={`px-4 py-2 text-sm rounded-lg border ${
-                  fontStyle === font
+                  fontStyle === font.value
                     ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
                     : 'border-gray-200 text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                {font}
+                {t(font.key, locale)}
               </button>
             ))}
           </div>
@@ -195,19 +229,19 @@ export default function DesignPage() {
 
         {/* 모서리 */}
         <div className="bg-white rounded-xl p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">모서리 스타일</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('design.cornerStyle', locale)}</h3>
           <div className="grid grid-cols-2 gap-2">
-            {cornerStyles.map((corner) => (
+            {cornerKeys.map((corner) => (
               <button
-                key={corner}
-                onClick={() => setCornerStyle(corner)}
+                key={corner.value}
+                onClick={() => setCornerStyle(corner.value)}
                 className={`px-4 py-2 text-sm rounded-lg border ${
-                  cornerStyle === corner
+                  cornerStyle === corner.value
                     ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
                     : 'border-gray-200 text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                {corner}
+                {t(corner.key, locale)}
               </button>
             ))}
           </div>
@@ -219,7 +253,7 @@ export default function DesignPage() {
           disabled={loading}
           className="w-full py-3 text-white bg-blue-600 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
         >
-          {loading ? '저장 중...' : '저장 후 MVP 단계로 이동'}
+          {loading ? t('design.saving', locale) : t('design.save', locale)}
         </button>
       </div>
     </div>

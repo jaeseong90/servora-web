@@ -1,21 +1,27 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { t, getLocale, type Locale } from '@/lib/i18n'
 
 export default function NewProjectPage() {
   const router = useRouter()
+  const [locale, setLocaleState] = useState<Locale>('ko')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  useEffect(() => {
+    setLocaleState(getLocale())
+  }, [])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) {
-      setError('프로젝트 제목을 입력하세요.')
+      setError(t('project.new.titleRequired', locale))
       return
     }
 
@@ -55,11 +61,11 @@ export default function NewProjectPage() {
         <div className="max-w-lg mx-auto">
           <div className="mb-6">
             <Link href="/dashboard" className="text-sm text-on-surface-variant hover:text-on-surface">
-              &larr; 대시보드로 돌아가기
+              {t('project.new.back', locale)}
             </Link>
           </div>
 
-          <h1 className="text-2xl font-bold text-on-surface mb-6">새 프로젝트 만들기</h1>
+          <h1 className="text-2xl font-bold text-on-surface mb-6">{t('project.new.title', locale)}</h1>
 
           <form onSubmit={handleSubmit} className="glass-card rounded-xl p-6 shadow-sm space-y-5 border border-outline-variant/20">
             {error && (
@@ -68,7 +74,7 @@ export default function NewProjectPage() {
 
             <div>
               <label htmlFor="title" className="block text-sm font-medium text-on-surface-variant mb-1">
-                프로젝트 제목 *
+                {t('project.new.nameLabel', locale)}
               </label>
               <input
                 id="title"
@@ -76,13 +82,13 @@ export default function NewProjectPage() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full px-4 py-2.5 bg-surface-container-lowest border border-outline-variant/20 rounded-lg focus:ring-2 focus:ring-primary/40 focus:outline-none text-on-surface"
-                placeholder="예: 반려동물 돌봄 서비스"
+                placeholder={t('project.new.namePlaceholder', locale)}
               />
             </div>
 
             <div>
               <label htmlFor="description" className="block text-sm font-medium text-on-surface-variant mb-1">
-                간단한 설명
+                {t('project.new.descLabel', locale)}
               </label>
               <textarea
                 id="description"
@@ -90,7 +96,7 @@ export default function NewProjectPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
                 className="w-full px-4 py-2.5 bg-surface-container-lowest border border-outline-variant/20 rounded-lg focus:ring-2 focus:ring-primary/40 focus:outline-none resize-none text-on-surface"
-                placeholder="프로젝트에 대한 간단한 설명을 입력하세요"
+                placeholder={t('project.new.descPlaceholder', locale)}
               />
             </div>
 
@@ -99,7 +105,7 @@ export default function NewProjectPage() {
               disabled={loading}
               className="w-full py-2.5 text-white bg-primary-container rounded-lg font-medium hover:bg-primary-container/80 disabled:opacity-50"
             >
-              {loading ? '생성 중...' : '프로젝트 생성'}
+              {loading ? t('project.new.loading', locale) : t('project.new.submit', locale)}
             </button>
           </form>
         </div>
