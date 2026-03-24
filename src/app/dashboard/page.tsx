@@ -1,25 +1,51 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { Project } from '@/types'
 import Sidebar from '@/components/layout/Sidebar'
 
+const statusConfig: Record<string, { label: string; step: number; color: string; hoverColor: string }> = {
+  PLANNING: { label: 'Planning', step: 0, color: 'primary', hoverColor: 'hover:border-primary/40' },
+  DESIGN: { label: 'Design', step: 1, color: 'primary', hoverColor: 'hover:border-primary/40' },
+  MVP: { label: 'In Progress', step: 2, color: 'secondary', hoverColor: 'hover:border-secondary/40' },
+  COMPLETED: { label: 'Completed', step: 4, color: 'secondary', hoverColor: 'hover:border-secondary/40' },
+}
+
+const workflowSteps = [
+  { icon: 'event_note', label: 'Planning' },
+  { icon: 'palette', label: 'Design' },
+  { icon: 'rocket', label: 'MVP' },
+  { icon: 'layers', label: 'Service' },
+  { icon: 'settings_applications', label: 'Operation' },
+]
+
 export default function DashboardPage() {
   const router = useRouter()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
+  const [userName, setUserName] = useState('')
+  const [userEmail, setUserEmail] = useState('')
+  const [showNewServiceModal, setShowNewServiceModal] = useState(false)
+  const [newServiceName, setNewServiceName] = useState('')
+  const [newServiceDesc, setNewServiceDesc] = useState('')
+  const [showNotifications, setShowNotifications] = useState(false)
+  const notifyRef = useRef<HTMLDivElement>(null)
+  const nameInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    const fetchProjects = async () => {
+    const fetchData = async () => {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         router.push('/login')
         return
       }
+
+      setUserName(user.user_metadata?.full_name || user.email?.split('@')[0] || 'User')
+      setUserEmail(user.email || '')
 
       const { data } = await supabase
         .from('projects')
@@ -30,70 +56,464 @@ export default function DashboardPage() {
       setLoading(false)
     }
 
-    fetchProjects()
+    fetchData()
   }, [router])
 
-  const statusLabels: Record<string, { label: string; color: string }> = {
-    PLANNING: { label: '기획 중', color: 'bg-yellow-100 text-yellow-800' },
-    DESIGN: { label: '디자인', color: 'bg-purple-100 text-purple-800' },
-    MVP: { label: 'MVP', color: 'bg-blue-100 text-blue-800' },
-    COMPLETED: { label: '완료', color: 'bg-green-100 text-green-800' },
+  useEffect(() => {
+    if (showNewServiceModal && nameInputRef.current) {
+      nameInputRef.current.focus()
+    }
+  }, [showNewServiceModal])
+
+  // Close notification popup on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (notifyRef.current && !notifyRef.current.contains(e.target as Node)) {
+        setShowNotifications(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleLogout = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
   }
 
+  const handleCreateService = async () => {
+    if (!newServiceName.trim()) {
+      alert('서비스 이름을 입력해주세요.')
+      return
+    }
+
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data, error } = await supabase
+      .from('projects')
+      .insert({
+        title: newServiceName.trim(),
+        description: newServiceDesc.trim() || null,
+        user_id: user.id,
+        status: 'PLANNING',
+      })
+      .select()
+      .single()
+
+    if (error) {
+      alert('서비스 생성에 실패했습니다.')
+      return
+    }
+
+    setShowNewServiceModal(false)
+    setNewServiceName('')
+    setNewServiceDesc('')
+
+    if (data) {
+      router.push(`/projects/${data.id}/planning`)
+    }
+  }
+
+  const activeCount = projects.length
+  const latestProject = projects[0]
+
+  const getStepIndex = (status: string) => {
+    const cfg = statusConfig[status]
+    return cfg ? cfg.step : 0
+  }
+
+  const notificationData = [
+    { service: 'Payment API', time: '2 mins ago', action: 'Deployment Success' },
+    { service: 'User Auth', time: '15 mins ago', action: 'Config Updated' },
+    { service: 'Storage S3', time: '1 hour ago', action: 'Scaling active' },
+    { service: 'Catalog Web', time: '3 hours ago', action: 'New branch \'dev\'' },
+    { service: 'Analytics', time: '5 hours ago', action: 'Monthly report' },
+    { service: 'System Core', time: '8 hours ago', action: 'Kernel patched' },
+    { service: 'CDN Edge', time: '10 hours ago', action: 'Cache flushed' },
+    { service: 'DB Primary', time: '12 hours ago', action: 'Backup completed' },
+  ]
+
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <main className="flex-1 p-8">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">내 프로젝트</h1>
-          <Link
-            href="/projects/new"
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-          >
-            + 새 프로젝트
-          </Link>
+    <div className="bg-background text-on-background font-body">
+      {/* New Service Modal */}
+      {showNewServiceModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-background/80 backdrop-blur-md">
+          <div className="max-w-xl w-full glass-card p-10 rounded-2xl shadow-[0_0_100px_rgba(124,58,237,0.2)] border border-outline-variant/20 relative overflow-hidden">
+            {/* Glow effects */}
+            <div className="absolute -top-20 -left-20 w-64 h-64 bg-primary-container/20 rounded-full blur-[80px]" />
+            <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-secondary/10 rounded-full blur-[80px]" />
+            <button
+              className="absolute top-6 right-6 text-on-surface-variant hover:text-on-surface transition-colors"
+              onClick={() => setShowNewServiceModal(false)}
+            >
+              <span className="material-symbols-outlined">close</span>
+            </button>
+            <div className="relative z-10">
+              <div className="w-16 h-16 bg-surface-container-highest rounded-2xl flex items-center justify-center mb-6 shadow-xl border border-outline-variant/30">
+                <span className="material-symbols-outlined text-3xl text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>add_box</span>
+              </div>
+              <h2 className="text-3xl font-black tracking-tight text-on-surface mb-2">새 서비스 만들기</h2>
+              <p className="text-on-surface-variant mb-8">혁신적인 비즈니스 아이디어를 Servora와 함께 시작하세요.</p>
+              <div className="space-y-6 text-left">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-secondary uppercase tracking-[0.2em]">서비스 이름</label>
+                  <input
+                    ref={nameInputRef}
+                    className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-4 text-on-surface focus:ring-2 focus:ring-primary/40 focus:outline-none transition-all"
+                    placeholder="예: Ethereal E-commerce UI"
+                    type="text"
+                    value={newServiceName}
+                    onChange={(e) => setNewServiceName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleCreateService()
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-secondary uppercase tracking-[0.2em]">서비스 설명</label>
+                  <textarea
+                    className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-4 text-on-surface focus:ring-2 focus:ring-primary/40 focus:outline-none transition-all h-32 resize-none"
+                    placeholder="서비스의 목적과 핵심 가치를 입력해주세요..."
+                    value={newServiceDesc}
+                    onChange={(e) => setNewServiceDesc(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-4 mt-10">
+                <button
+                  className="flex-1 py-4 rounded-xl bg-surface-container-highest text-on-surface font-bold hover:bg-surface-container-high transition-colors"
+                  onClick={() => {
+                    setShowNewServiceModal(false)
+                    setNewServiceName('')
+                    setNewServiceDesc('')
+                  }}
+                >
+                  취소
+                </button>
+                <button
+                  className="flex-1 py-4 rounded-xl bg-gradient-to-r from-primary-container to-secondary text-on-primary font-black shadow-lg shadow-primary-container/30 hover:scale-[1.02] active:scale-95 transition-all"
+                  onClick={handleCreateService}
+                >
+                  서비스 생성
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sidebar */}
+      <Sidebar
+        userName={userName}
+        userEmail={userEmail}
+        onNewService={() => setShowNewServiceModal(true)}
+        onLogout={handleLogout}
+      />
+
+      {/* Main Content Area */}
+      <main className="ml-64 min-h-screen relative flex flex-col main-content-transition">
+        {/* Background Atmosphere */}
+        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+          <div className="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] bg-primary-container/10 blur-[120px] rounded-full" />
+          <div className="absolute bottom-[-5%] left-[5%] w-[40%] h-[40%] bg-secondary/5 blur-[100px] rounded-full" />
+          <div className="absolute top-[20%] left-[20%] w-[30%] h-[30%] bg-tertiary-container/5 blur-[120px] rounded-full" />
         </div>
 
-        {loading ? (
-          <div className="text-center py-12 text-gray-500">로딩 중...</div>
-        ) : projects.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500 mb-4">아직 프로젝트가 없습니다.</p>
-            <Link
-              href="/projects/new"
-              className="px-6 py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 font-medium"
-            >
-              첫 프로젝트 만들기
-            </Link>
+        {/* TopNavBar */}
+        <header className="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 z-40 glass-topbar shadow-sm flex items-center justify-between px-8 border-b border-outline-variant/5">
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-bold tracking-tight text-on-surface">Dashboard</h2>
+            <div className="h-4 w-[1px] bg-outline-variant/20" />
+            <div className="flex items-center gap-2 px-3 py-1 bg-surface-container-low rounded-full border border-outline-variant/10">
+              <div className="w-2 h-2 rounded-full bg-secondary shadow-[0_0_8px_rgba(95,218,203,0.6)]" />
+              <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">System Online</span>
+            </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project) => {
-              const status = statusLabels[project.status] || statusLabels.PLANNING
-              return (
-                <Link
-                  key={project.id}
-                  href={`/projects/${project.id}/planning`}
-                  className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
+          <div className="flex items-center gap-4">
+            {/* Notification Bell */}
+            <div className="relative" ref={notifyRef}>
+              <button
+                className="relative w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-secondary hover:bg-surface-container/50 transition-all"
+                onClick={() => setShowNotifications(!showNotifications)}
+              >
+                <span className="material-symbols-outlined">notifications</span>
+                <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-surface" />
+              </button>
+              {/* Notification Popup */}
+              {showNotifications && (
+                <div className="absolute top-full right-0 mt-3 w-96 glass-popup rounded-2xl overflow-hidden z-[60]">
+                  <div className="p-4 border-b border-outline-variant/10 flex justify-between items-center">
+                    <h3 className="text-sm font-bold text-on-surface">Recent Activity</h3>
+                    <button className="text-[10px] text-secondary font-bold hover:underline">Mark all as read</button>
+                  </div>
+                  <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
+                    <table className="w-full text-left text-[11px]">
+                      <thead className="bg-surface-container-highest/30 text-outline sticky top-0">
+                        <tr>
+                          <th className="px-4 py-2 font-bold uppercase tracking-wider">서비스</th>
+                          <th className="px-4 py-2 font-bold uppercase tracking-wider">작업 시간</th>
+                          <th className="px-4 py-2 font-bold uppercase tracking-wider">작업 내용</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-outline-variant/10">
+                        {notificationData.map((item, idx) => (
+                          <tr key={idx} className="hover:bg-white/5 transition-colors">
+                            <td className="px-4 py-3 font-medium text-on-surface">{item.service}</td>
+                            <td className="px-4 py-3 text-on-surface-variant">{item.time}</td>
+                            <td className="px-4 py-3 text-on-surface-variant">{item.action}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="p-3 bg-surface-container-highest/20 text-center border-t border-outline-variant/10">
+                    <button className="text-[10px] text-outline hover:text-on-surface transition-colors font-bold uppercase tracking-widest">
+                      View all activity
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* Content */}
+        <div className="relative z-10 pt-24 px-8 pb-12 flex-1 flex flex-col">
+          {loading ? (
+            <div className="flex items-center justify-center flex-1">
+              <div className="text-on-surface-variant text-lg">로딩 중...</div>
+            </div>
+          ) : (
+            <>
+              {/* Welcome Banner Section */}
+              <div className="mb-10 relative overflow-hidden rounded-3xl bg-surface-container-low p-10 border border-outline-variant/10">
+                <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary-container/10 blur-[100px] rounded-full" />
+                <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+                  <div>
+                    <h1 className="text-4xl font-black text-on-surface tracking-tight mb-2">
+                      안녕하세요, {userName}님! 👋
+                    </h1>
+                    <p className="text-on-surface-variant text-lg">오늘도 Servora와 함께 혁신적인 서비스를 시작해보세요.</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
+                    <div className="bg-surface-container/50 backdrop-blur-md p-6 rounded-2xl border border-outline-variant/10">
+                      <div className="text-on-surface-variant text-xs font-bold mb-1 uppercase tracking-widest">보유 크레딧</div>
+                      <div className="text-3xl font-black text-secondary">2,450</div>
+                    </div>
+                    <div className="bg-surface-container/50 backdrop-blur-md p-6 rounded-2xl border border-outline-variant/10">
+                      <div className="text-on-surface-variant text-xs font-bold mb-1 uppercase tracking-widest">활성 서비스</div>
+                      <div className="text-3xl font-black text-primary">
+                        {String(activeCount).padStart(2, '0')}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Workflow Summary Widget Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+                {/* New Service Card */}
+                <button
+                  className="group relative flex flex-col justify-between p-8 rounded-3xl bg-gradient-to-br from-primary-container/20 to-surface-container-lowest border border-primary-container/20 text-left transition-all duration-300 hover:shadow-[0_0_30px_rgba(124,58,237,0.15)] overflow-hidden"
+                  onClick={() => setShowNewServiceModal(true)}
                 >
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900 truncate">{project.title}</h3>
-                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${status.color}`}>
-                      {status.label}
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary-container/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="h-14 w-14 rounded-2xl bg-primary-container flex items-center justify-center mb-6 shadow-xl shadow-primary-container/30 group-hover:scale-110 transition-transform relative z-10">
+                    <span className="material-symbols-outlined text-3xl text-on-primary">add_box</span>
+                  </div>
+                  <div className="relative z-10">
+                    <h3 className="text-xl font-bold mb-2">새 서비스 만들기</h3>
+                    <p className="text-on-surface-variant text-sm">AI 가이드를 따라 몇 분 만에 완벽한 워크플로우를 구성하세요.</p>
+                  </div>
+                </button>
+
+                {/* Workflow Summary */}
+                <div className="lg:col-span-2 glass-card p-8 rounded-3xl border border-outline-variant/10">
+                  <div className="flex justify-between items-center mb-8">
+                    <div className="flex flex-col">
+                      <h3 className="text-lg font-bold flex items-center gap-2">
+                        <span className="material-symbols-outlined text-secondary">analytics</span>
+                        최근 워크플로우 요약
+                      </h3>
+                      <p className="text-sm text-on-surface-variant ml-8 font-medium">
+                        {latestProject ? latestProject.title : '서비스를 생성해주세요'}
+                      </p>
+                    </div>
+                    {latestProject && (
+                      <Link
+                        href={`/projects/${latestProject.id}/planning`}
+                        className="text-xs text-secondary font-bold hover:underline flex items-center gap-1"
+                      >
+                        상세 보기 <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                      </Link>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    {workflowSteps.map((step, idx) => {
+                      const currentStep = latestProject ? getStepIndex(latestProject.status) : -1
+                      const isCompleted = idx < currentStep
+                      const isCurrent = idx === currentStep
+                      const isLocked = idx > currentStep
+                      let percentage = '0'
+                      if (isCompleted) percentage = '100'
+                      else if (isCurrent) percentage = '50'
+
+                      return (
+                        <div
+                          key={step.label}
+                          className={`flex flex-col gap-1.5 p-4 rounded-2xl bg-surface-container-lowest/50 border border-outline-variant/5 ${
+                            isLocked ? 'opacity-50' : ''
+                          }`}
+                        >
+                          <span className="text-[9px] text-outline font-bold uppercase tracking-widest">{step.label}</span>
+                          <span className={`text-[14px] font-bold ${
+                            isCompleted ? 'text-secondary' : isCurrent ? 'text-primary' : 'text-outline'
+                          }`}>
+                            {percentage}%
+                          </span>
+                          <div className="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden mt-1">
+                            <div
+                              className={`h-full rounded-full ${
+                                isCompleted ? 'bg-secondary' : isCurrent ? 'bg-primary' : 'bg-outline'
+                              }`}
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Service Card Grid */}
+              <div>
+                <div className="flex justify-between items-end mb-8">
+                  <div>
+                    <h2 className="text-2xl font-black text-on-surface mb-1">내 서비스</h2>
+                    <p className="text-on-surface-variant text-sm">진행 중인 모든 서비스를 관리합니다.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="p-2.5 rounded-xl bg-surface-container-high border border-outline-variant/10 text-on-surface-variant hover:text-secondary transition-colors">
+                      <span className="material-symbols-outlined text-xl">filter_list</span>
+                    </button>
+                    <button className="p-2.5 rounded-xl bg-surface-container-high border border-outline-variant/10 text-secondary">
+                      <span className="material-symbols-outlined text-xl">grid_view</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {projects.map((project) => {
+                    const cfg = statusConfig[project.status] || statusConfig.PLANNING
+                    const currentStep = getStepIndex(project.status)
+
+                    return (
+                      <Link
+                        key={project.id}
+                        href={`/projects/${project.id}/planning`}
+                        className={`glass-card group p-6 rounded-3xl border border-outline-variant/10 ${cfg.hoverColor} transition-all duration-300 flex flex-col gap-6 cursor-pointer`}
+                      >
+                        {/* Workflow Step Indicators */}
+                        <div className="flex flex-col gap-4 pb-4 border-b border-outline-variant/5">
+                          <div className="flex gap-3">
+                            {workflowSteps.map((step, idx) => {
+                              const isCompleted = idx < currentStep
+                              const isCurrent = idx === currentStep
+                              const isLocked = idx > currentStep
+
+                              return (
+                                <div key={step.label} className={`flex flex-col items-center gap-1.5 ${isLocked ? 'opacity-20' : ''}`}>
+                                  <span className={`material-symbols-outlined text-base ${
+                                    isCompleted ? 'text-secondary' : isCurrent ? 'text-primary' : 'text-outline'
+                                  }`}>
+                                    {step.icon}
+                                  </span>
+                                  <div className={`w-1.5 h-1.5 rounded-full ${
+                                    isCompleted
+                                      ? 'bg-secondary shadow-[0_0_5px_rgba(95,218,203,0.8)]'
+                                      : isCurrent
+                                        ? 'bg-primary animate-pulse'
+                                        : 'bg-outline'
+                                  }`} />
+                                  {isCurrent && (
+                                    <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest whitespace-nowrap mt-1 ${
+                                      cfg.color === 'secondary'
+                                        ? 'bg-secondary/10 text-secondary border border-secondary/20'
+                                        : 'bg-primary/10 text-primary border border-primary/20'
+                                    }`}>
+                                      {cfg.label}
+                                    </span>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Card Content */}
+                        <div className="flex-1">
+                          <h4 className={`text-xl font-bold mb-2 group-hover:text-${cfg.color} transition-colors`}>
+                            {project.title}
+                          </h4>
+                          {project.description && (
+                            <p className="text-on-surface-variant text-sm line-clamp-2">{project.description}</p>
+                          )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex items-center justify-between pt-4 border-t border-outline-variant/5">
+                          <div className="flex flex-col">
+                            <span className="text-[9px] text-outline font-bold uppercase tracking-widest mb-0.5">마지막 수정일자</span>
+                            <span className="text-[11px] text-on-surface-variant font-medium">
+                              {new Date(project.updated_at || project.created_at).toLocaleDateString('ko-KR', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                              }).replace(/\./g, '.').replace(/\s/g, '')}
+                            </span>
+                          </div>
+                          <span className={`px-4 py-2 ${
+                            cfg.color === 'secondary' ? 'bg-secondary text-on-secondary' : 'bg-primary-container text-white'
+                          } text-xs font-bold rounded-xl flex items-center gap-2`}>
+                            계속하기 <span className="material-symbols-outlined text-sm">play_arrow</span>
+                          </span>
+                        </div>
+                      </Link>
+                    )
+                  })}
+
+                  {/* Add Service Card */}
+                  <div
+                    className="flex flex-col items-center justify-center p-12 rounded-3xl border-2 border-dashed border-outline-variant/20 bg-surface-container-lowest/50 text-center group hover:border-secondary/30 transition-colors cursor-pointer"
+                    onClick={() => setShowNewServiceModal(true)}
+                  >
+                    <div className="h-16 w-16 rounded-full bg-surface-container flex items-center justify-center mb-6 text-on-surface-variant/40 group-hover:scale-110 transition-transform">
+                      <span className="material-symbols-outlined text-4xl">inventory_2</span>
+                    </div>
+                    <h4 className="font-bold text-on-surface-variant mb-6">새로운 아이디어가 있나요?</h4>
+                    <span className="flex items-center gap-2 py-2.5 px-6 rounded-full bg-surface-container-highest text-on-surface text-sm font-bold border border-outline-variant/30 group-hover:border-secondary/50 transition-all">
+                      <span className="material-symbols-outlined text-base">add</span> 서비스 추가
                     </span>
                   </div>
-                  {project.description && (
-                    <p className="text-sm text-gray-600 line-clamp-2 mb-3">{project.description}</p>
-                  )}
-                  <p className="text-xs text-gray-400">
-                    {new Date(project.created_at).toLocaleDateString('ko-KR')}
-                  </p>
-                </Link>
-              )
-            })}
-          </div>
-        )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </main>
+
+      {/* Floating Action Button */}
+      <button
+        className="fixed bottom-8 right-8 h-16 w-16 bg-gradient-to-br from-primary-container to-secondary rounded-full flex items-center justify-center shadow-[0_10px_30px_rgba(124,58,237,0.4)] hover:shadow-[0_15px_40px_rgba(124,58,237,0.6)] hover:-translate-y-1 active:translate-y-0 active:scale-90 transition-all z-50"
+        onClick={() => setShowNewServiceModal(true)}
+      >
+        <span className="material-symbols-outlined text-on-primary text-3xl">add</span>
+      </button>
     </div>
   )
 }

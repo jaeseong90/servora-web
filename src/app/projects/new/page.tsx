@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import Sidebar from '@/components/layout/Sidebar'
 
 export default function NewProjectPage() {
   const router = useRouter()
@@ -51,25 +50,24 @@ export default function NewProjectPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
+    <div className="min-h-screen bg-background text-on-background">
       <main className="flex-1 p-8">
         <div className="max-w-lg mx-auto">
           <div className="mb-6">
-            <Link href="/dashboard" className="text-sm text-gray-500 hover:text-gray-700">
+            <Link href="/dashboard" className="text-sm text-on-surface-variant hover:text-on-surface">
               &larr; 대시보드로 돌아가기
             </Link>
           </div>
 
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">새 프로젝트 만들기</h1>
+          <h1 className="text-2xl font-bold text-on-surface mb-6">새 프로젝트 만들기</h1>
 
-          <form onSubmit={handleSubmit} className="bg-white rounded-xl p-6 shadow-sm space-y-5">
+          <form onSubmit={handleSubmit} className="glass-card rounded-xl p-6 shadow-sm space-y-5 border border-outline-variant/20">
             {error && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg">{error}</div>
+              <div className="p-3 text-sm text-error bg-error/10 rounded-lg">{error}</div>
             )}
 
             <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="title" className="block text-sm font-medium text-on-surface-variant mb-1">
                 프로젝트 제목 *
               </label>
               <input
@@ -77,13 +75,13 @@ export default function NewProjectPage() {
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                className="w-full px-4 py-2.5 bg-surface-container-lowest border border-outline-variant/20 rounded-lg focus:ring-2 focus:ring-primary/40 focus:outline-none text-on-surface"
                 placeholder="예: 반려동물 돌봄 서비스"
               />
             </div>
 
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="description" className="block text-sm font-medium text-on-surface-variant mb-1">
                 간단한 설명
               </label>
               <textarea
@@ -91,7 +89,7 @@ export default function NewProjectPage() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
+                className="w-full px-4 py-2.5 bg-surface-container-lowest border border-outline-variant/20 rounded-lg focus:ring-2 focus:ring-primary/40 focus:outline-none resize-none text-on-surface"
                 placeholder="프로젝트에 대한 간단한 설명을 입력하세요"
               />
             </div>
@@ -99,7 +97,7 @@ export default function NewProjectPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 text-white bg-blue-600 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+              className="w-full py-2.5 text-white bg-primary-container rounded-lg font-medium hover:bg-primary-container/80 disabled:opacity-50"
             >
               {loading ? '생성 중...' : '프로젝트 생성'}
             </button>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import Sidebar from '@/components/layout/Sidebar'
+import ProjectSidebar from '@/components/layout/ProjectSidebar'
 import type { Project } from '@/types'
 
 export default function ProjectLayout({ children }: { children: React.ReactNode }) {
@@ -24,9 +24,9 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
   }, [params.id])
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar project={project} />
-      <main className="flex-1 p-8">{children}</main>
+    <div className="flex min-h-screen bg-background text-on-background">
+      <ProjectSidebar project={project} />
+      <main className="flex-1 ml-64 p-8">{children}</main>
     </div>
   )
 }
