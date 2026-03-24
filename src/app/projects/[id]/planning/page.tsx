@@ -223,6 +223,47 @@ export default function PlanningPage() {
     }
   }
 
+  const handleExportPdf = async () => {
+    if (!contentRef.current || !document) return
+    const html2pdf = (await import('html2pdf.js')).default
+
+    // PDF용 임시 컨테이너 (밝은 배경)
+    const clone = contentRef.current.cloneNode(true) as HTMLElement
+    clone.style.background = '#ffffff'
+    clone.style.color = '#1a1a1a'
+    clone.style.padding = '40px'
+    clone.style.fontSize = '13px'
+    clone.style.lineHeight = '1.8'
+    clone.querySelectorAll('h1, h2, h3').forEach((el) => {
+      ;(el as HTMLElement).style.color = '#111111'
+    })
+    clone.querySelectorAll('p, li, span').forEach((el) => {
+      ;(el as HTMLElement).style.color = '#333333'
+    })
+
+    const container = window.document.createElement('div')
+    container.style.position = 'absolute'
+    container.style.left = '-9999px'
+    container.appendChild(clone)
+    window.document.body.appendChild(container)
+
+    const title = project?.title || 'plan'
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (html2pdf() as any)
+      .set({
+        margin: [15, 15, 15, 15],
+        filename: `${title}_v${document.version}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+      })
+      .from(clone)
+      .save()
+
+    window.document.body.removeChild(container)
+  }
+
   const handleFinalize = async () => {
     if (!confirm(t('plan.finalizeConfirm', locale))) return
 
@@ -349,6 +390,15 @@ export default function PlanningPage() {
                         {locale === 'ko' ? '확정' : 'Finalize'}
                       </button>
                     </>
+                  )}
+                  {document && (
+                    <button
+                      onClick={handleExportPdf}
+                      className="px-3 py-1.5 text-xs font-medium text-on-surface-variant bg-surface-container-high rounded-lg hover:bg-surface-container-highest transition-colors flex items-center gap-1"
+                    >
+                      <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
+                      PDF
+                    </button>
                   )}
                   {document && (
                     <span className="text-xs text-on-surface-variant">
