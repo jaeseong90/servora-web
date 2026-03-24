@@ -10,6 +10,11 @@ export async function GET(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  // 프로젝트 소유권 확인
+  const { data: project } = await supabase
+    .from('projects').select('id').eq('id', projectId).eq('user_id', user.id).single()
+  if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
   const { data: build } = await supabase
     .from('mvp_build_queue')
     .select('*')

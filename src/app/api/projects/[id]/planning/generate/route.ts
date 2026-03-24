@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { streamWithGemini } from '@/lib/ai/gemini'
 import { loadPrompt } from '@/lib/prompts'
@@ -10,12 +10,12 @@ export async function POST(
   const { id: projectId } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return new Response('Unauthorized', { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: project } = await supabase
     .from('projects').select('*').eq('id', projectId).single()
   if (!project || project.user_id !== user.id)
-    return new Response('Not found', { status: 404 })
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await request.json()
   const questionnaire = body.questionnaire as Record<string, string>
