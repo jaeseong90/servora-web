@@ -11,11 +11,12 @@ interface SidebarProps {
   onNewService: () => void
   onLogout: () => void
   locale?: Locale
+  onLocaleChange?: (l: Locale) => void
   mobileOpen?: boolean
   onMobileClose?: () => void
 }
 
-export default function Sidebar({ userName, userEmail, onNewService, onLogout, locale = 'ko', mobileOpen = false, onMobileClose }: SidebarProps) {
+export default function Sidebar({ userName, userEmail, onNewService, onLogout, locale = 'ko', onLocaleChange, mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [showUserPopup, setShowUserPopup] = useState(false)
@@ -155,6 +156,33 @@ export default function Sidebar({ userName, userEmail, onNewService, onLogout, l
           <span className="material-symbols-outlined text-[18px]">support_agent</span>
           {!collapsed && <span>{t('nav.support', locale)}</span>}
         </a>
+
+        {/* Language Switcher */}
+        {onLocaleChange && (
+          <div className={`flex items-center gap-1 py-2 ${collapsed ? 'justify-center px-2' : 'px-6'}`}>
+            <span className={`material-symbols-outlined text-[18px] text-on-surface-variant ${collapsed ? '' : 'mr-2'}`}>translate</span>
+            {!collapsed && (
+              <>
+                <button
+                  onClick={() => onLocaleChange('ko')}
+                  className={`px-2 py-0.5 text-[10px] rounded transition-colors ${
+                    locale === 'ko' ? 'bg-primary-container/30 text-on-surface font-bold' : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  한국어
+                </button>
+                <button
+                  onClick={() => onLocaleChange('en')}
+                  className={`px-2 py-0.5 text-[10px] rounded transition-colors ${
+                    locale === 'en' ? 'bg-primary-container/30 text-on-surface font-bold' : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  EN
+                </button>
+              </>
+            )}
+          </div>
+        )}
 
         {/* User Profile Section */}
         <div

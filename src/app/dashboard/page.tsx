@@ -217,6 +217,7 @@ export default function DashboardPage() {
         onNewService={() => setShowNewServiceModal(true)}
         onLogout={handleLogout}
         locale={locale}
+        onLocaleChange={(l) => { setLocale(l); setLocaleState(l) }}
         mobileOpen={sidebarOpen}
         onMobileClose={() => setSidebarOpen(false)}
       />
