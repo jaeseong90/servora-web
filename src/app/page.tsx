@@ -1247,8 +1247,26 @@ export default function Home() {
     }
   }, [initFeatures, initGsapAnimations, initBrandHero])
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Servora',
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Web',
+    description: '아이디어만 입력하면 AI가 기획 → 디자인 → MVP까지 자동으로 만들어 드립니다.',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'KRW',
+    },
+  }
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Script
         src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.4/gsap.min.js"
         strategy="afterInteractive"

@@ -8,6 +8,8 @@ import type { Project } from '@/types'
 
 interface ProjectSidebarProps {
   project: Project | null
+  mobileOpen?: boolean
+  onMobileClose?: () => void
 }
 
 const steps = [
@@ -25,7 +27,7 @@ function getStepState(stepKey: string, projectStatus: string) {
   return 'locked'
 }
 
-export default function ProjectSidebar({ project }: ProjectSidebarProps) {
+export default function ProjectSidebar({ project, mobileOpen = false, onMobileClose }: ProjectSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
@@ -52,13 +54,7 @@ export default function ProjectSidebar({ project }: ProjectSidebarProps) {
     router.refresh()
   }
 
-  return (
-    <aside
-      className={`h-screen fixed left-0 top-0 flex flex-col glass-sidebar z-50 shadow-[20px_0_40px_-5px_rgba(0,0,0,0.4)] ${
-        collapsed ? 'w-20' : 'w-64'
-      }`}
-      style={{ transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
-    >
+  const sidebarContent = (
       <div className="flex flex-col h-full py-8 justify-between">
         {/* Branding */}
         <div className={`flex flex-col gap-6 ${collapsed ? 'px-4 items-center' : 'px-6'}`}>
@@ -74,7 +70,7 @@ export default function ProjectSidebar({ project }: ProjectSidebarProps) {
               )}
             </Link>
             <button
-              onClick={() => setCollapsed(!collapsed)}
+              onClick={() => { if (onMobileClose) onMobileClose(); else setCollapsed(!collapsed); }}
               className="text-on-surface-variant hover:text-secondary transition-colors p-1 rounded-md hover:bg-surface-container-high"
             >
               <span className="material-symbols-outlined">
@@ -227,6 +223,29 @@ export default function ProjectSidebar({ project }: ProjectSidebarProps) {
           </div>
         </div>
       </div>
-    </aside>
+  )
+
+  return (
+    <>
+      {/* Desktop */}
+      <aside
+        className={`hidden md:flex h-screen fixed left-0 top-0 flex-col glass-sidebar z-50 shadow-[20px_0_40px_-5px_rgba(0,0,0,0.4)] ${
+          collapsed ? 'w-20' : 'w-64'
+        }`}
+        style={{ transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <>
+          <div className="md:hidden fixed inset-0 bg-black/60 z-40" onClick={onMobileClose} />
+          <aside className="md:hidden fixed left-0 top-0 w-72 h-screen flex flex-col glass-sidebar z-50 shadow-[20px_0_40px_-5px_rgba(0,0,0,0.4)]">
+            {sidebarContent}
+          </aside>
+        </>
+      )}
+    </>
   )
 }

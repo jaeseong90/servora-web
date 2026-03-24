@@ -33,6 +33,7 @@ export default function DashboardPage() {
   const [newServiceName, setNewServiceName] = useState('')
   const [newServiceDesc, setNewServiceDesc] = useState('')
   const [showNotifications, setShowNotifications] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [locale, setLocaleState] = useState<Locale>('ko')
   const notifyRef = useRef<HTMLDivElement>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
@@ -216,10 +217,12 @@ export default function DashboardPage() {
         onNewService={() => setShowNewServiceModal(true)}
         onLogout={handleLogout}
         locale={locale}
+        mobileOpen={sidebarOpen}
+        onMobileClose={() => setSidebarOpen(false)}
       />
 
       {/* Main Content Area */}
-      <main className="ml-64 min-h-screen relative flex flex-col main-content-transition">
+      <main className="md:ml-64 min-h-screen relative flex flex-col main-content-transition">
         {/* Background Atmosphere */}
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
           <div className="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] bg-primary-container/10 blur-[120px] rounded-full" />
@@ -228,8 +231,15 @@ export default function DashboardPage() {
         </div>
 
         {/* TopNavBar */}
-        <header className="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 z-40 glass-topbar shadow-sm flex items-center justify-between px-8 border-b border-outline-variant/5">
-          <div className="flex items-center gap-4">
+        <header className="fixed top-0 right-0 w-full md:w-[calc(100%-16rem)] h-16 z-30 glass-topbar shadow-sm flex items-center justify-between px-4 md:px-8 border-b border-outline-variant/5">
+          <div className="flex items-center gap-3 md:gap-4">
+            {/* Mobile hamburger */}
+            <button
+              className="md:hidden p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <span className="material-symbols-outlined">menu</span>
+            </button>
             <h2 className="text-lg font-bold tracking-tight text-on-surface">Dashboard</h2>
             <div className="h-4 w-[1px] bg-outline-variant/20" />
             <div className="flex items-center gap-2 px-3 py-1 bg-surface-container-low rounded-full border border-outline-variant/10">
@@ -286,7 +296,7 @@ export default function DashboardPage() {
         </header>
 
         {/* Content */}
-        <div className="relative z-10 pt-24 px-8 pb-12 flex-1 flex flex-col">
+        <div className="relative z-10 pt-24 px-4 md:px-8 pb-12 flex-1 flex flex-col">
           {loading ? (
             <div className="flex items-center justify-center flex-1">
               <div className="text-on-surface-variant text-lg">{t('dash.loading', locale)}</div>
