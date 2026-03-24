@@ -320,88 +320,133 @@ export default function PlanningPage() {
         </div>
       )}
 
-      {/* 기획안 표시 */}
+      {/* 기획안 표시 — v1 스타일 2컬럼 레이아웃 */}
       {displayContent && (
-        <div className="glass-card rounded-2xl p-8 border border-outline-variant/20 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-on-surface">
-              {t('plan.title', locale)} {document ? `v${document.version}` : ''}
-            </h2>
-            <div className="flex gap-2">
-              {!showForm && !document?.is_finalized && (
-                <button
-                  onClick={() => setShowForm(true)}
-                  className="px-3 py-1.5 text-xs font-medium text-on-surface-variant bg-surface-container-high rounded-lg hover:bg-surface-container-highest transition-colors"
-                >
-                  {t('plan.editQuestions', locale)}
-                </button>
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 mb-6">
+          {/* 메인: 기획안 */}
+          <div>
+            <div className="glass-card rounded-2xl border border-outline-variant/20 mb-6">
+              {/* 헤더 */}
+              <div className="flex items-center justify-between px-8 pt-6 pb-4 border-b border-outline-variant/10">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-bold text-on-surface">
+                    {document ? `v${document.version}` : ''}
+                  </span>
+                  {document?.is_finalized && (
+                    <span className="px-2 py-0.5 text-[10px] font-bold text-secondary bg-secondary/10 border border-secondary/20 rounded-full uppercase tracking-wider">
+                      {locale === 'ko' ? '확정' : 'Finalized'}
+                    </span>
+                  )}
+                  {isGenerating && (
+                    <span className="px-2 py-0.5 text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 rounded-full uppercase tracking-wider flex items-center gap-1">
+                      <span className="w-2 h-2 border border-primary border-t-transparent rounded-full animate-spin" />
+                      {t('plan.aiWriting', locale)}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {!showForm && !document?.is_finalized && (
+                    <button
+                      onClick={() => setShowForm(true)}
+                      className="px-3 py-1.5 text-xs font-medium text-on-surface-variant bg-surface-container-high rounded-lg hover:bg-surface-container-highest transition-colors"
+                    >
+                      {t('plan.editQuestions', locale)}
+                    </button>
+                  )}
+                  {document && (
+                    <span className="text-xs text-on-surface-variant">
+                      {new Date(document.created_at).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US')}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 기획안 본문 */}
+              <div
+                ref={contentRef}
+                className="px-8 py-6 leading-[1.8] text-[14px] [&_h1]:text-[24px] [&_h1]:font-bold [&_h1]:mt-8 [&_h1]:mb-3 [&_h1]:text-on-surface [&_h2]:text-[20px] [&_h2]:font-bold [&_h2]:mt-6 [&_h2]:mb-2 [&_h2]:text-on-surface [&_h3]:text-[16px] [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2 [&_h3]:text-on-surface [&_p]:mb-3 [&_p]:text-on-surface-variant [&_ul]:ml-6 [&_ul]:mb-3 [&_ol]:ml-6 [&_ol]:mb-3 [&_li]:mb-1 [&_li]:text-on-surface-variant [&_strong]:text-on-surface [&_code]:bg-surface-container-highest [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[13px] [&_blockquote]:border-l-2 [&_blockquote]:border-primary-container/40 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-on-surface-variant/80 [&_table]:w-full [&_table]:border-collapse [&_th]:bg-surface-container-high [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:text-xs [&_th]:font-bold [&_td]:px-3 [&_td]:py-2 [&_td]:border-t [&_td]:border-outline-variant/10"
+                dangerouslySetInnerHTML={{ __html: marked(displayContent) as string }}
+              />
+            </div>
+
+            {/* 피드백 / 딥다이브 / 확정 — 기획안 하단 */}
+            {document && !document.is_finalized && !isGenerating && (
+              <div className="space-y-4">
+                {/* 피드백 */}
+                <div className="glass-card rounded-2xl p-6 border border-outline-variant/20">
+                  <h3 className="text-sm font-bold text-on-surface mb-3">{t('plan.feedbackTitle', locale)}</h3>
+                  <textarea
+                    value={feedback}
+                    onChange={(e) => setFeedback(e.target.value)}
+                    rows={4}
+                    className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant/20 rounded-xl focus:ring-2 focus:ring-primary/40 focus:border-transparent outline-none resize-y text-sm text-on-surface placeholder:text-on-surface-variant/40"
+                    placeholder={t('plan.feedbackPlaceholder', locale)}
+                  />
+                  <div className="flex items-center gap-3 mt-3">
+                    <button
+                      onClick={handleFeedback}
+                      disabled={!feedback.trim()}
+                      className="px-5 py-2.5 text-sm font-bold text-white bg-primary-container rounded-xl hover:bg-primary-container/80 disabled:opacity-50 transition-colors"
+                    >
+                      {t('plan.feedbackSubmit', locale)}
+                    </button>
+                    <button
+                      onClick={handleFinalize}
+                      className="px-5 py-2.5 text-sm font-bold text-white bg-secondary rounded-xl hover:bg-secondary/80 transition-colors"
+                    >
+                      {locale === 'ko' ? '기획안 확정' : 'Finalize Plan'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 딥다이브 */}
+                <div className="glass-card rounded-2xl p-6 border border-outline-variant/20">
+                  <h3 className="text-sm font-bold text-on-surface mb-2">{t('plan.deepDiveTitle', locale)}</h3>
+                  <p className="text-xs text-on-surface-variant mb-3">
+                    {locale === 'ko' ? '특정 섹션을 더 깊이 있게 보강하고 싶다면 선택해주세요.' : 'Select a section to deep dive and enhance.'}
+                  </p>
+                  <input
+                    value={deepDiveSection}
+                    onChange={(e) => setDeepDiveSection(e.target.value)}
+                    className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant/20 rounded-xl focus:ring-2 focus:ring-primary/40 focus:border-transparent outline-none text-sm text-on-surface placeholder:text-on-surface-variant/40"
+                    placeholder={t('plan.deepDivePlaceholder', locale)}
+                  />
+                  <button
+                    onClick={handleDeepDive}
+                    disabled={!deepDiveSection.trim()}
+                    className="mt-3 px-5 py-2.5 text-sm font-bold text-white bg-tertiary-container rounded-xl hover:bg-tertiary-container/80 disabled:opacity-50 transition-colors"
+                  >
+                    {t('plan.deepDiveSubmit', locale)}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 사이드바: 버전 히스토리 (추후 확장) */}
+          <div className="hidden lg:block">
+            <div className="glass-card rounded-2xl p-5 border border-outline-variant/20 sticky top-8">
+              <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-4">
+                {locale === 'ko' ? '버전 히스토리' : 'Version History'}
+              </h3>
+              {document && (
+                <div className="space-y-2">
+                  <div className="px-3 py-2.5 rounded-xl bg-primary-container/15 border border-primary-container/20">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-on-surface">v{document.version}</span>
+                      {document.is_finalized && (
+                        <span className="text-[9px] font-bold text-secondary uppercase">Finalized</span>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-on-surface-variant">
+                      {new Date(document.created_at).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US', {
+                        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                </div>
               )}
             </div>
-          </div>
-
-          {isGenerating && (
-            <div className="mb-4 flex items-center gap-2 text-sm text-secondary">
-              <div className="w-4 h-4 border-2 border-secondary border-t-transparent rounded-full animate-spin" />
-              {t('plan.aiWriting', locale)}
-            </div>
-          )}
-
-          <div
-            ref={contentRef}
-            className="prose prose-sm prose-invert max-w-none prose-headings:text-on-surface prose-p:text-on-surface-variant prose-strong:text-on-surface prose-li:text-on-surface-variant"
-            dangerouslySetInnerHTML={{ __html: marked(displayContent) as string }}
-          />
-        </div>
-      )}
-
-      {/* 피드백 / 딥다이브 / 확정 */}
-      {document && !document.is_finalized && !isGenerating && (
-        <div className="space-y-4">
-          {/* 피드백 */}
-          <div className="glass-card rounded-2xl p-6 border border-outline-variant/20">
-            <h3 className="text-sm font-bold text-on-surface mb-3">{t('plan.feedbackTitle', locale)}</h3>
-            <textarea
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-              rows={3}
-              className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant/20 rounded-xl focus:ring-2 focus:ring-primary/40 focus:border-transparent outline-none resize-none text-sm text-on-surface placeholder:text-on-surface-variant/40"
-              placeholder={t('plan.feedbackPlaceholder', locale)}
-            />
-            <button
-              onClick={handleFeedback}
-              disabled={!feedback.trim()}
-              className="mt-3 px-4 py-2 text-sm font-bold text-white bg-primary-container rounded-xl hover:bg-primary-container/80 disabled:opacity-50 transition-colors"
-            >
-              {t('plan.feedbackSubmit', locale)}
-            </button>
-          </div>
-
-          {/* 딥다이브 */}
-          <div className="glass-card rounded-2xl p-6 border border-outline-variant/20">
-            <h3 className="text-sm font-bold text-on-surface mb-3">{t('plan.deepDiveTitle', locale)}</h3>
-            <input
-              value={deepDiveSection}
-              onChange={(e) => setDeepDiveSection(e.target.value)}
-              className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant/20 rounded-xl focus:ring-2 focus:ring-primary/40 focus:border-transparent outline-none text-sm text-on-surface placeholder:text-on-surface-variant/40"
-              placeholder={t('plan.deepDivePlaceholder', locale)}
-            />
-            <button
-              onClick={handleDeepDive}
-              disabled={!deepDiveSection.trim()}
-              className="mt-3 px-4 py-2 text-sm font-bold text-white bg-tertiary-container rounded-xl hover:bg-tertiary-container/80 disabled:opacity-50 transition-colors"
-            >
-              {t('plan.deepDiveSubmit', locale)}
-            </button>
-          </div>
-
-          {/* 확정 */}
-          <div className="glass-card rounded-2xl p-6 border border-outline-variant/20">
-            <button
-              onClick={handleFinalize}
-              className="w-full py-3.5 text-white bg-gradient-to-r from-secondary to-secondary/80 rounded-xl font-bold hover:shadow-lg transition-all"
-            >
-              {t('plan.finalize', locale)}
-            </button>
           </div>
         </div>
       )}
