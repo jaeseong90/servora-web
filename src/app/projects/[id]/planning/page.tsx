@@ -23,6 +23,7 @@ export default function PlanningPage() {
   const [feedback, setFeedback] = useState('')
   const [deepDiveSection, setDeepDiveSection] = useState('')
   const [showForm, setShowForm] = useState(true)
+  const [errorMsg, setErrorMsg] = useState('')
   const contentRef = useRef<HTMLDivElement>(null)
 
   const questions = questionKeys.map((key, i) => ({
@@ -74,6 +75,7 @@ export default function PlanningPage() {
 
     setIsGenerating(true)
     setStreamContent('')
+    setErrorMsg('')
     setShowForm(false)
 
     try {
@@ -83,8 +85,20 @@ export default function PlanningPage() {
         body: JSON.stringify({ questionnaire }),
       })
 
+      if (!response.ok) {
+        setErrorMsg(t('plan.errorGenerate', locale))
+        setShowForm(true)
+        setIsGenerating(false)
+        return
+      }
+
       const reader = response.body?.getReader()
-      if (!reader) return
+      if (!reader) {
+        setErrorMsg(t('plan.errorGenerate', locale))
+        setShowForm(true)
+        setIsGenerating(false)
+        return
+      }
       const decoder = new TextDecoder()
 
       while (true) {
@@ -109,14 +123,16 @@ export default function PlanningPage() {
                   .single()
                 if (doc) setDocument(doc)
               } else if (data.type === 'error') {
-                alert(`${data.message}`)
+                setErrorMsg(data.message)
+                setShowForm(true)
               }
             } catch { /* ignore */ }
           }
         }
       }
-    } catch (err) {
-      alert(t('plan.errorGenerate', locale))
+    } catch {
+      setErrorMsg(t('plan.errorGenerate', locale))
+      setShowForm(true)
     } finally {
       setIsGenerating(false)
     }
@@ -240,7 +256,21 @@ export default function PlanningPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('plan.title', locale)}</h1>
+      {/* 에러 메시지 */}
+      {errorMsg && (
+        <div className="mb-6 p-4 rounded-xl bg-error/10 border border-error/20 flex items-start gap-3">
+          <span className="material-symbols-outlined text-error text-lg mt-0.5">error</span>
+          <div className="flex-1">
+            <p className="text-sm text-error font-medium">{errorMsg}</p>
+            <p className="text-xs text-on-surface-variant mt-1">
+              {locale === 'ko' ? '잠시 후 다시 시도해주세요.' : 'Please try again in a moment.'}
+            </p>
+          </div>
+          <button onClick={() => setErrorMsg('')} className="text-on-surface-variant hover:text-on-surface">
+            <span className="material-symbols-outlined text-sm">close</span>
+          </button>
+        </div>
+      )}
 
       {/* 설문 폼 */}
       {showForm && (
