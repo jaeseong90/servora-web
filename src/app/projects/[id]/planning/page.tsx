@@ -26,6 +26,7 @@ export default function PlanningPage() {
   const [showForm, setShowForm] = useState(true)
   const [errorMsg, setErrorMsg] = useState('')
   const [pptRequesting, setPptRequesting] = useState(false)
+  const [pptStatus, setPptStatus] = useState<string | null>(null) // null=미요청, PENDING, BUILDING, COMPLETED, FAILED
   const contentRef = useRef<HTMLDivElement>(null)
 
   const questions = questionKeys.map((key, i) => ({
@@ -79,6 +80,23 @@ export default function PlanningPage() {
       setDocument(docs[0])
     }
   }
+
+  // 현재 문서의 PPT 큐 상태 조회
+  useEffect(() => {
+    if (!document) { setPptStatus(null); return }
+    const checkPpt = async () => {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('ppt_build_queue')
+        .select('status')
+        .eq('document_id', document.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+      setPptStatus(data?.status || null)
+    }
+    checkPpt()
+  }, [document])
 
   const handleGenerate = async () => {
     const filledCount = Object.values(questionnaire).filter(v => v.trim()).length
@@ -237,6 +255,7 @@ export default function PlanningPage() {
       if (error) {
         alert(locale === 'ko' ? 'PPT 생성 요청에 실패했습니다.' : 'Failed to request PPT generation.')
       } else {
+        setPptStatus('PENDING')
         alert(locale === 'ko' ? 'PPT 생성이 요청되었습니다. 완료되면 알림을 드립니다.' : 'PPT generation requested. You will be notified when ready.')
       }
     } catch {
@@ -424,14 +443,26 @@ export default function PlanningPage() {
                     </button>
                   )}
                   {document && (
-                    <button
-                      onClick={handleRequestPpt}
-                      disabled={pptRequesting}
-                      className="px-3 py-1.5 text-xs font-medium text-on-surface-variant bg-surface-container-high rounded-lg hover:bg-surface-container-highest transition-colors flex items-center gap-1 disabled:opacity-50"
-                    >
-                      <span className="material-symbols-outlined text-sm">slideshow</span>
-                      {pptRequesting ? (locale === 'ko' ? '요청 중...' : 'Requesting...') : 'PPT'}
-                    </button>
+                    pptStatus === 'PENDING' || pptStatus === 'BUILDING' ? (
+                      <span className="px-3 py-1.5 text-xs font-medium text-primary bg-primary/10 border border-primary/20 rounded-lg flex items-center gap-1">
+                        <span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        {pptStatus === 'PENDING' ? (locale === 'ko' ? 'PPT 대기' : 'PPT Queued') : (locale === 'ko' ? 'PPT 생성 중' : 'PPT Building')}
+                      </span>
+                    ) : pptStatus === 'COMPLETED' ? (
+                      <span className="px-3 py-1.5 text-xs font-medium text-secondary bg-secondary/10 border border-secondary/20 rounded-lg flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm">check_circle</span>
+                        {locale === 'ko' ? 'PPT 완료' : 'PPT Ready'}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={handleRequestPpt}
+                        disabled={pptRequesting}
+                        className="px-3 py-1.5 text-xs font-medium text-on-surface-variant bg-surface-container-high rounded-lg hover:bg-surface-container-highest transition-colors flex items-center gap-1 disabled:opacity-50"
+                      >
+                        <span className="material-symbols-outlined text-sm">slideshow</span>
+                        {pptRequesting ? (locale === 'ko' ? '요청 중...' : 'Requesting...') : 'PPT'}
+                      </button>
+                    )
                   )}
                   {document && (
                     <span className="text-xs text-on-surface-variant">
