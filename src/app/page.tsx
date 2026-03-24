@@ -1263,7 +1263,7 @@ export default function Home() {
   }
 
   return (
-    <>
+    <div className="landing-page">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -1924,6 +1924,6 @@ export default function Home() {
           <a href="#">Terms</a>
         </div>
       </footer>
-    </>
+    </div>
   )
 }

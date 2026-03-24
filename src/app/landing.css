@@ -1,10 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
-/* Reset & Base */
-*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-
-:root {
+/* Landing page scoped styles */
+.landing-page {
   --p:   #7C3AED;
   --s:   #60A5FA;
   --a:   #6EE7D8;
@@ -16,9 +13,6 @@ html { scroll-behavior: smooth; }
   --td:  rgba(240, 240, 255, .22);
   --br:  rgba(255, 255, 255, .07);
   --brl: rgba(255, 255, 255, .11);
-}
-
-body {
   font-family: 'Inter', -apple-system, sans-serif;
   background: var(--bg);
   color: var(--t);
