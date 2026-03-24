@@ -25,6 +25,7 @@ export default function PlanningPage() {
   const [deepDiveSection, setDeepDiveSection] = useState('')
   const [showForm, setShowForm] = useState(true)
   const [errorMsg, setErrorMsg] = useState('')
+  const [pptRequesting, setPptRequesting] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
 
   const questions = questionKeys.map((key, i) => ({
@@ -223,6 +224,28 @@ export default function PlanningPage() {
     }
   }
 
+  const handleRequestPpt = async () => {
+    if (!document) return
+    setPptRequesting(true)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.from('ppt_build_queue').insert({
+        project_id: Number(projectId),
+        document_id: document.id,
+        status: 'PENDING',
+      })
+      if (error) {
+        alert(locale === 'ko' ? 'PPT 생성 요청에 실패했습니다.' : 'Failed to request PPT generation.')
+      } else {
+        alert(locale === 'ko' ? 'PPT 생성이 요청되었습니다. 완료되면 알림을 드립니다.' : 'PPT generation requested. You will be notified when ready.')
+      }
+    } catch {
+      alert(locale === 'ko' ? 'PPT 생성 요청 중 오류가 발생했습니다.' : 'An error occurred while requesting PPT generation.')
+    } finally {
+      setPptRequesting(false)
+    }
+  }
+
   const handleExportPdf = async () => {
     if (!contentRef.current || !document) return
     const html2pdf = (await import('html2pdf.js')).default
@@ -398,6 +421,16 @@ export default function PlanningPage() {
                     >
                       <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
                       PDF
+                    </button>
+                  )}
+                  {document && (
+                    <button
+                      onClick={handleRequestPpt}
+                      disabled={pptRequesting}
+                      className="px-3 py-1.5 text-xs font-medium text-on-surface-variant bg-surface-container-high rounded-lg hover:bg-surface-container-highest transition-colors flex items-center gap-1 disabled:opacity-50"
+                    >
+                      <span className="material-symbols-outlined text-sm">slideshow</span>
+                      {pptRequesting ? (locale === 'ko' ? '요청 중...' : 'Requesting...') : 'PPT'}
                     </button>
                   )}
                   {document && (
