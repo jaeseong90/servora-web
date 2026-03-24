@@ -81,6 +81,20 @@ CREATE TABLE IF NOT EXISTS mvp_projects (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- PPT 빌드 큐 (데몬이 폴링)
+CREATE TABLE IF NOT EXISTS ppt_build_queue (
+  id BIGSERIAL PRIMARY KEY,
+  project_id BIGINT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  document_id BIGINT NOT NULL REFERENCES planning_documents(id),
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  result_url TEXT,
+  error_message TEXT,
+  build_duration_ms BIGINT,
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- ── 2. 누락 컬럼 보정 (기존 DB에서 실행 시) ──
 
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'PLANNING';
@@ -97,6 +111,8 @@ CREATE INDEX IF NOT EXISTS idx_planning_feedbacks_project ON planning_feedbacks(
 CREATE INDEX IF NOT EXISTS idx_build_queue_status ON mvp_build_queue(status);
 CREATE INDEX IF NOT EXISTS idx_build_queue_project ON mvp_build_queue(project_id);
 CREATE INDEX IF NOT EXISTS idx_build_queue_created ON mvp_build_queue(created_at);
+CREATE INDEX IF NOT EXISTS idx_ppt_queue_status ON ppt_build_queue(status);
+CREATE INDEX IF NOT EXISTS idx_ppt_queue_project ON ppt_build_queue(project_id);
 
 -- ── 4. RLS (Row Level Security) ──
 
@@ -106,6 +122,7 @@ ALTER TABLE planning_feedbacks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE design_preferences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mvp_build_queue ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mvp_projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ppt_build_queue ENABLE ROW LEVEL SECURITY;
 
 -- 기존 정책 제거 후 재생성 (재실행 안전)
 DROP POLICY IF EXISTS "Users own projects" ON projects;
@@ -114,6 +131,7 @@ DROP POLICY IF EXISTS "Users own feedbacks" ON planning_feedbacks;
 DROP POLICY IF EXISTS "Users own design prefs" ON design_preferences;
 DROP POLICY IF EXISTS "Users own build queue" ON mvp_build_queue;
 DROP POLICY IF EXISTS "Users own mvp projects" ON mvp_projects;
+DROP POLICY IF EXISTS "Users own ppt queue" ON ppt_build_queue;
 
 CREATE POLICY "Users own projects" ON projects
   FOR ALL USING (auth.uid() = user_id);
@@ -131,4 +149,7 @@ CREATE POLICY "Users own build queue" ON mvp_build_queue
   FOR ALL USING (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()));
 
 CREATE POLICY "Users own mvp projects" ON mvp_projects
+  FOR ALL USING (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()));
+
+CREATE POLICY "Users own ppt queue" ON ppt_build_queue
   FOR ALL USING (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()));
