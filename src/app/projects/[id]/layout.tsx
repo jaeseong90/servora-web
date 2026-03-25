@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import ProjectSidebar from '@/components/layout/ProjectSidebar'
 import type { Project } from '@/types'
 
 export default function ProjectLayout({ children }: { children: React.ReactNode }) {
   const params = useParams()
+  const pathname = usePathname()
   const [project, setProject] = useState<Project | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -22,7 +23,7 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
       setProject(data)
     }
     if (params.id) fetchProject()
-  }, [params.id])
+  }, [params.id, pathname])
 
   return (
     <div className="flex min-h-screen bg-background text-on-background">

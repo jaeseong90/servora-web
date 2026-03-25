@@ -31,6 +31,22 @@ export async function POST(
     return NextResponse.json({ error: '확정된 기획안이 없습니다.' }, { status: 400 })
   }
 
+  // 중복 요청 방지: PENDING/BUILDING/COMPLETED 상태가 이미 있으면 차단
+  const { data: existingBuild } = await supabase
+    .from('mvp_build_queue')
+    .select('id, status')
+    .eq('project_id', projectId)
+    .in('status', ['PENDING', 'BUILDING', 'COMPLETED'])
+    .limit(1)
+    .single()
+
+  if (existingBuild) {
+    const msg = existingBuild.status === 'COMPLETED'
+      ? 'MVP가 이미 생성되었습니다.'
+      : 'MVP 생성이 이미 진행 중입니다.'
+    return NextResponse.json({ error: msg }, { status: 409 })
+  }
+
   // 디자인 선호도 가져오기
   const { data: designPref } = await supabase
     .from('design_preferences')

@@ -27,6 +27,8 @@ export default function PlanningPage() {
   const [errorMsg, setErrorMsg] = useState('')
   const [pptRequesting, setPptRequesting] = useState(false)
   const [pptStatus, setPptStatus] = useState<string | null>(null) // null=미요청, PENDING, BUILDING, COMPLETED, FAILED
+  const [pptOutputUrl, setPptOutputUrl] = useState<string | null>(null)
+  const [initialLoading, setInitialLoading] = useState(true)
   const contentRef = useRef<HTMLDivElement>(null)
 
   const questions = questionKeys.map((key, i) => ({
@@ -64,6 +66,7 @@ export default function PlanningPage() {
           setQuestionnaire(docs[0].questionnaire_data as Record<string, string>)
         }
       }
+      setInitialLoading(false)
     }
     fetchData()
   }, [projectId])
@@ -81,22 +84,48 @@ export default function PlanningPage() {
     }
   }
 
-  // 현재 문서의 PPT 큐 상태 조회
+  // 브라우저 알림 권한 요청
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+  }, [])
+
+  // 현재 문서의 PPT 큐 상태 조회 + 폴링
   useEffect(() => {
     if (!document) { setPptStatus(null); return }
     const checkPpt = async () => {
       const supabase = createClient()
       const { data } = await supabase
         .from('ppt_build_queue')
-        .select('status')
+        .select('status, output_url')
         .eq('document_id', document.id)
         .order('created_at', { ascending: false })
         .limit(1)
         .single()
-      setPptStatus(data?.status || null)
+      const newStatus = data?.status || null
+      setPptOutputUrl(data?.output_url || null)
+      // 상태 변경 시 알림
+      if (pptStatus && newStatus !== pptStatus) {
+        if (newStatus === 'COMPLETED') {
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('Servora', { body: locale === 'ko' ? 'PPT 생성이 완료되었습니다!' : 'PPT generation is complete!', icon: '/favicon.ico' })
+          }
+        } else if (newStatus === 'FAILED') {
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('Servora', { body: locale === 'ko' ? 'PPT 생성에 실패했습니다.' : 'PPT generation failed.', icon: '/favicon.ico' })
+          }
+        }
+      }
+      setPptStatus(newStatus)
     }
     checkPpt()
-  }, [document])
+    // PENDING/BUILDING일 때 5초 폴링
+    if (pptStatus === 'PENDING' || pptStatus === 'BUILDING') {
+      const interval = setInterval(checkPpt, 5000)
+      return () => clearInterval(interval)
+    }
+  }, [document, pptStatus, locale])
 
   const handleGenerate = async () => {
     const filledCount = Object.values(questionnaire).filter(v => v.trim()).length
@@ -324,7 +353,16 @@ export default function PlanningPage() {
     }
   }
 
+  const hasFinalized = allDocuments.some(doc => doc.is_finalized)
   const displayContent = streamContent || document?.content || ''
+
+  if (initialLoading) {
+    return (
+      <div className="max-w-6xl mx-auto flex items-center justify-center py-32">
+        <span className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -417,7 +455,7 @@ export default function PlanningPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {!showForm && !document?.is_finalized && (
+                  {!showForm && !hasFinalized && (
                     <>
                       <button
                         onClick={() => setShowForm(true)}
@@ -442,17 +480,37 @@ export default function PlanningPage() {
                       PDF
                     </button>
                   )}
-                  {document && (
+                  {document && document.is_finalized && (
                     pptStatus === 'PENDING' || pptStatus === 'BUILDING' ? (
                       <span className="px-3 py-1.5 text-xs font-medium text-primary bg-primary/10 border border-primary/20 rounded-lg flex items-center gap-1">
                         <span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                         {pptStatus === 'PENDING' ? (locale === 'ko' ? 'PPT 대기' : 'PPT Queued') : (locale === 'ko' ? 'PPT 생성 중' : 'PPT Building')}
                       </span>
                     ) : pptStatus === 'COMPLETED' ? (
-                      <span className="px-3 py-1.5 text-xs font-medium text-secondary bg-secondary/10 border border-secondary/20 rounded-lg flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">check_circle</span>
-                        {locale === 'ko' ? 'PPT 완료' : 'PPT Ready'}
-                      </span>
+                      pptOutputUrl ? (
+                        <a
+                          href={pptOutputUrl}
+                          download
+                          className="px-3 py-1.5 text-xs font-medium text-secondary bg-secondary/10 border border-secondary/20 rounded-lg hover:bg-secondary/20 transition-colors flex items-center gap-1"
+                        >
+                          <span className="material-symbols-outlined text-sm">download</span>
+                          {locale === 'ko' ? 'PPT 다운로드' : 'Download PPT'}
+                        </a>
+                      ) : (
+                        <span className="px-3 py-1.5 text-xs font-medium text-secondary bg-secondary/10 border border-secondary/20 rounded-lg flex items-center gap-1">
+                          <span className="material-symbols-outlined text-sm">check_circle</span>
+                          {locale === 'ko' ? 'PPT 완료' : 'PPT Ready'}
+                        </span>
+                      )
+                    ) : pptStatus === 'FAILED' ? (
+                      <button
+                        onClick={handleRequestPpt}
+                        disabled={pptRequesting}
+                        className="px-3 py-1.5 text-xs font-medium text-error bg-error/10 border border-error/20 rounded-lg hover:bg-error/20 transition-colors flex items-center gap-1 disabled:opacity-50"
+                      >
+                        <span className="material-symbols-outlined text-sm">refresh</span>
+                        {pptRequesting ? (locale === 'ko' ? '요청 중...' : 'Requesting...') : (locale === 'ko' ? 'PPT 재요청' : 'PPT Retry')}
+                      </button>
                     ) : (
                       <button
                         onClick={handleRequestPpt}
@@ -481,7 +539,7 @@ export default function PlanningPage() {
             </div>
 
             {/* 피드백 / 딥다이브 / 확정 — 기획안 하단 */}
-            {document && !document.is_finalized && !isGenerating && (
+            {document && !hasFinalized && !isGenerating && (
               <div className="space-y-4">
                 {/* 피드백 */}
                 <div className="glass-card rounded-2xl p-6 border border-outline-variant/20">

@@ -45,12 +45,24 @@ export default function DesignPage() {
   const [fontStyle, setFontStyle] = useState('깔끔한 고딕')
   const [cornerStyle, setCornerStyle] = useState('약간 둥근')
   const [loading, setLoading] = useState(false)
+  const [finalizing, setFinalizing] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [projectStatus, setProjectStatus] = useState<string>('DESIGN')
 
   useEffect(() => {
     setLocaleState(getLocale())
-    const fetchPreference = async () => {
+    const fetchData = async () => {
       const supabase = createClient()
+
+      // 프로젝트 상태 조회
+      const { data: project } = await supabase
+        .from('projects')
+        .select('status')
+        .eq('id', projectId)
+        .single()
+      if (project) setProjectStatus(project.status)
+
+      // 디자인 선호도 조회
       const { data } = await supabase
         .from('design_preferences')
         .select('*')
@@ -68,8 +80,18 @@ export default function DesignPage() {
         setSaved(true)
       }
     }
-    fetchPreference()
+    fetchData()
   }, [projectId])
+
+  const designPayload = {
+    design_tone: designTone,
+    primary_color: primaryColor,
+    secondary_color: secondaryColor,
+    color_mode: colorMode,
+    layout_style: layoutStyle,
+    font_style: fontStyle,
+    corner_style: cornerStyle,
+  }
 
   const handleSave = async () => {
     setLoading(true)
@@ -77,26 +99,38 @@ export default function DesignPage() {
       const response = await fetch(`/api/projects/${projectId}/design/preference`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          design_tone: designTone,
-          primary_color: primaryColor,
-          secondary_color: secondaryColor,
-          color_mode: colorMode,
-          layout_style: layoutStyle,
-          font_style: fontStyle,
-          corner_style: cornerStyle,
-        }),
+        body: JSON.stringify(designPayload),
       })
 
       if (response.ok) {
         setSaved(true)
+      } else {
+        alert(t('design.saveError', locale))
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleFinalize = async () => {
+    setFinalizing(true)
+    try {
+      const response = await fetch(`/api/projects/${projectId}/design/preference`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...designPayload, finalize: true }),
+      })
+
+      if (response.ok) {
+        setSaved(true)
+        setProjectStatus('MVP')
         router.push(`/projects/${projectId}/mvp`)
         router.refresh()
       } else {
         alert(t('design.saveError', locale))
       }
     } finally {
-      setLoading(false)
+      setFinalizing(false)
     }
   }
 
@@ -112,22 +146,22 @@ export default function DesignPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('design.title', locale)}</h1>
+    <div className="max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold text-on-surface mb-6">{t('design.title', locale)}</h1>
 
       <div className="space-y-6">
         {/* 디자인 톤 */}
-        <div className="bg-white rounded-xl p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('design.tone', locale)}</h3>
+        <div className="glass-card rounded-2xl p-6 border border-outline-variant/20">
+          <h3 className="text-sm font-bold text-on-surface mb-3">{t('design.tone', locale)}</h3>
           <div className="grid grid-cols-3 gap-2">
             {toneKeys.map((tone) => (
               <button
                 key={tone.value}
                 onClick={() => setDesignTone(tone.value)}
-                className={`px-4 py-2 text-sm rounded-lg border ${
+                className={`px-4 py-2 text-sm rounded-xl border transition-colors ${
                   designTone === tone.value
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
-                    : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                    ? 'border-primary bg-primary/10 text-primary font-medium'
+                    : 'border-outline-variant/20 text-on-surface-variant hover:bg-surface-container-high'
                 }`}
               >
                 {t(tone.key, locale)}
@@ -137,48 +171,48 @@ export default function DesignPage() {
         </div>
 
         {/* 색상 */}
-        <div className="bg-white rounded-xl p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('design.brandColor', locale)}</h3>
+        <div className="glass-card rounded-2xl p-6 border border-outline-variant/20">
+          <h3 className="text-sm font-bold text-on-surface mb-3">{t('design.brandColor', locale)}</h3>
           <div className="flex gap-6">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">{t('design.primaryColor', locale)}</label>
+              <label className="block text-xs text-on-surface-variant mb-1">{t('design.primaryColor', locale)}</label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
                   value={primaryColor}
                   onChange={(e) => setPrimaryColor(e.target.value)}
-                  className="w-10 h-10 rounded border border-gray-300 cursor-pointer"
+                  className="w-10 h-10 rounded-lg border border-outline-variant/20 cursor-pointer bg-transparent"
                 />
-                <span className="text-sm text-gray-600">{primaryColor}</span>
+                <span className="text-sm text-on-surface-variant">{primaryColor}</span>
               </div>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">{t('design.secondaryColor', locale)}</label>
+              <label className="block text-xs text-on-surface-variant mb-1">{t('design.secondaryColor', locale)}</label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
                   value={secondaryColor}
                   onChange={(e) => setSecondaryColor(e.target.value)}
-                  className="w-10 h-10 rounded border border-gray-300 cursor-pointer"
+                  className="w-10 h-10 rounded-lg border border-outline-variant/20 cursor-pointer bg-transparent"
                 />
-                <span className="text-sm text-gray-600">{secondaryColor}</span>
+                <span className="text-sm text-on-surface-variant">{secondaryColor}</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* 색상 모드 */}
-        <div className="bg-white rounded-xl p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('design.colorMode', locale)}</h3>
+        <div className="glass-card rounded-2xl p-6 border border-outline-variant/20">
+          <h3 className="text-sm font-bold text-on-surface mb-3">{t('design.colorMode', locale)}</h3>
           <div className="flex gap-2">
             {colorModes.map((mode) => (
               <button
                 key={mode}
                 onClick={() => setColorMode(mode)}
-                className={`px-4 py-2 text-sm rounded-lg border ${
+                className={`px-4 py-2 text-sm rounded-xl border transition-colors ${
                   colorMode === mode
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
-                    : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                    ? 'border-primary bg-primary/10 text-primary font-medium'
+                    : 'border-outline-variant/20 text-on-surface-variant hover:bg-surface-container-high'
                 }`}
               >
                 {colorModeLabelMap[mode]}
@@ -188,17 +222,17 @@ export default function DesignPage() {
         </div>
 
         {/* 레이아웃 */}
-        <div className="bg-white rounded-xl p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('design.layoutStyle', locale)}</h3>
+        <div className="glass-card rounded-2xl p-6 border border-outline-variant/20">
+          <h3 className="text-sm font-bold text-on-surface mb-3">{t('design.layoutStyle', locale)}</h3>
           <div className="grid grid-cols-3 gap-2">
             {layoutStyles.map((layout) => (
               <button
                 key={layout}
                 onClick={() => setLayoutStyle(layout)}
-                className={`px-4 py-2 text-sm rounded-lg border ${
+                className={`px-4 py-2 text-sm rounded-xl border transition-colors ${
                   layoutStyle === layout
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
-                    : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                    ? 'border-primary bg-primary/10 text-primary font-medium'
+                    : 'border-outline-variant/20 text-on-surface-variant hover:bg-surface-container-high'
                 }`}
               >
                 {layoutLabelMap[layout]}
@@ -208,17 +242,17 @@ export default function DesignPage() {
         </div>
 
         {/* 폰트 */}
-        <div className="bg-white rounded-xl p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('design.fontStyle', locale)}</h3>
+        <div className="glass-card rounded-2xl p-6 border border-outline-variant/20">
+          <h3 className="text-sm font-bold text-on-surface mb-3">{t('design.fontStyle', locale)}</h3>
           <div className="grid grid-cols-2 gap-2">
             {fontKeys.map((font) => (
               <button
                 key={font.value}
                 onClick={() => setFontStyle(font.value)}
-                className={`px-4 py-2 text-sm rounded-lg border ${
+                className={`px-4 py-2 text-sm rounded-xl border transition-colors ${
                   fontStyle === font.value
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
-                    : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                    ? 'border-primary bg-primary/10 text-primary font-medium'
+                    : 'border-outline-variant/20 text-on-surface-variant hover:bg-surface-container-high'
                 }`}
               >
                 {t(font.key, locale)}
@@ -228,17 +262,17 @@ export default function DesignPage() {
         </div>
 
         {/* 모서리 */}
-        <div className="bg-white rounded-xl p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('design.cornerStyle', locale)}</h3>
+        <div className="glass-card rounded-2xl p-6 border border-outline-variant/20">
+          <h3 className="text-sm font-bold text-on-surface mb-3">{t('design.cornerStyle', locale)}</h3>
           <div className="grid grid-cols-2 gap-2">
             {cornerKeys.map((corner) => (
               <button
                 key={corner.value}
                 onClick={() => setCornerStyle(corner.value)}
-                className={`px-4 py-2 text-sm rounded-lg border ${
+                className={`px-4 py-2 text-sm rounded-xl border transition-colors ${
                   cornerStyle === corner.value
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
-                    : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                    ? 'border-primary bg-primary/10 text-primary font-medium'
+                    : 'border-outline-variant/20 text-on-surface-variant hover:bg-surface-container-high'
                 }`}
               >
                 {t(corner.key, locale)}
@@ -247,14 +281,52 @@ export default function DesignPage() {
           </div>
         </div>
 
-        {/* 저장 */}
-        <button
-          onClick={handleSave}
-          disabled={loading}
-          className="w-full py-3 text-white bg-blue-600 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
-        >
-          {loading ? t('design.saving', locale) : t('design.save', locale)}
-        </button>
+        {/* 버튼 영역 */}
+        {projectStatus === 'MVP' || projectStatus === 'COMPLETED' ? (
+          <div className="glass-card rounded-2xl p-4 border border-outline-variant/20 text-center">
+            <span className="text-sm text-on-surface-variant flex items-center justify-center gap-2">
+              <span className="material-symbols-outlined text-lg">lock</span>
+              {locale === 'ko' ? '디자인이 확정되었습니다' : 'Design has been finalized'}
+            </span>
+          </div>
+        ) : (
+          <div className="flex gap-3">
+            <button
+              onClick={handleSave}
+              disabled={loading || finalizing}
+              className="flex-1 py-3.5 text-sm font-bold text-on-surface-variant bg-surface-container-high rounded-xl hover:bg-surface-container-highest active:scale-[0.99] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-on-surface-variant border-t-transparent rounded-full animate-spin" />
+                  {locale === 'ko' ? '저장 중...' : 'Saving...'}
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-lg">save</span>
+                  {locale === 'ko' ? '저장' : 'Save'}
+                </>
+              )}
+            </button>
+            <button
+              onClick={handleFinalize}
+              disabled={loading || finalizing}
+              className="flex-1 py-3.5 text-sm font-bold text-white bg-primary-container rounded-xl hover:bg-primary-container/90 hover:shadow-lg hover:shadow-primary-container/30 active:scale-[0.99] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {finalizing ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  {locale === 'ko' ? '확정 중...' : 'Finalizing...'}
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-lg">check_circle</span>
+                  {locale === 'ko' ? '확정 후 MVP 단계로' : 'Finalize & Go to MVP'}
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

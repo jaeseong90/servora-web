@@ -39,19 +39,20 @@ export async function POST(
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await request.json()
+  const { finalize, ...designData } = body
 
   // upsert
   const { error } = await supabase
     .from('design_preferences')
     .upsert({
       project_id: Number(projectId),
-      design_tone: body.design_tone,
-      primary_color: body.primary_color,
-      secondary_color: body.secondary_color,
-      color_mode: body.color_mode,
-      layout_style: body.layout_style,
-      font_style: body.font_style,
-      corner_style: body.corner_style,
+      design_tone: designData.design_tone,
+      primary_color: designData.primary_color,
+      secondary_color: designData.secondary_color,
+      color_mode: designData.color_mode,
+      layout_style: designData.layout_style,
+      font_style: designData.font_style,
+      corner_style: designData.corner_style,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'project_id' })
 
@@ -59,11 +60,13 @@ export async function POST(
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // 프로젝트 상태 업데이트
-  await supabase
-    .from('projects')
-    .update({ status: 'MVP', updated_at: new Date().toISOString() })
-    .eq('id', projectId)
+  // finalize 플래그가 있을 때만 MVP 단계로 전환
+  if (finalize) {
+    await supabase
+      .from('projects')
+      .update({ status: 'MVP', updated_at: new Date().toISOString() })
+      .eq('id', projectId)
+  }
 
   return NextResponse.json({ success: true })
 }

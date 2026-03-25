@@ -85,11 +85,19 @@ CREATE TABLE IF NOT EXISTS mvp_projects (
 CREATE TABLE IF NOT EXISTS ppt_build_queue (
   id BIGSERIAL PRIMARY KEY,
   project_id BIGINT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  document_id BIGINT NOT NULL REFERENCES planning_documents(id),
+  document_id BIGINT NOT NULL REFERENCES planning_documents(id) ON DELETE CASCADE,
   status TEXT NOT NULL DEFAULT 'PENDING',
-  result_url TEXT,
+  slide_json TEXT,
+  output_url TEXT,
+  output_path TEXT,
   error_message TEXT,
   build_duration_ms BIGINT,
+  runner_type TEXT NOT NULL DEFAULT 'claude-code',
+  input_tokens BIGINT DEFAULT 0,
+  output_tokens BIGINT DEFAULT 0,
+  cache_creation_tokens BIGINT DEFAULT 0,
+  cache_read_tokens BIGINT DEFAULT 0,
+  total_cost_usd NUMERIC(10, 6) DEFAULT 0,
   started_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -102,6 +110,20 @@ ALTER TABLE planning_documents ADD COLUMN IF NOT EXISTS questionnaire_data JSONB
 ALTER TABLE design_preferences ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
 ALTER TABLE mvp_build_queue ADD COLUMN IF NOT EXISTS result_json TEXT;
 ALTER TABLE mvp_projects ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1;
+ALTER TABLE ppt_build_queue ADD COLUMN IF NOT EXISTS document_id BIGINT REFERENCES planning_documents(id) ON DELETE CASCADE;
+ALTER TABLE ppt_build_queue ADD COLUMN IF NOT EXISTS slide_json TEXT;
+ALTER TABLE ppt_build_queue ADD COLUMN IF NOT EXISTS output_url TEXT;
+ALTER TABLE ppt_build_queue ADD COLUMN IF NOT EXISTS output_path TEXT;
+ALTER TABLE ppt_build_queue ADD COLUMN IF NOT EXISTS error_message TEXT;
+ALTER TABLE ppt_build_queue ADD COLUMN IF NOT EXISTS build_duration_ms BIGINT;
+ALTER TABLE ppt_build_queue ADD COLUMN IF NOT EXISTS runner_type TEXT NOT NULL DEFAULT 'claude-code';
+ALTER TABLE ppt_build_queue ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ;
+ALTER TABLE ppt_build_queue ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+ALTER TABLE ppt_build_queue ADD COLUMN IF NOT EXISTS input_tokens BIGINT DEFAULT 0;
+ALTER TABLE ppt_build_queue ADD COLUMN IF NOT EXISTS output_tokens BIGINT DEFAULT 0;
+ALTER TABLE ppt_build_queue ADD COLUMN IF NOT EXISTS cache_creation_tokens BIGINT DEFAULT 0;
+ALTER TABLE ppt_build_queue ADD COLUMN IF NOT EXISTS cache_read_tokens BIGINT DEFAULT 0;
+ALTER TABLE ppt_build_queue ADD COLUMN IF NOT EXISTS total_cost_usd NUMERIC(10, 6) DEFAULT 0;
 
 -- ── 3. 인덱스 ──
 
@@ -113,6 +135,7 @@ CREATE INDEX IF NOT EXISTS idx_build_queue_project ON mvp_build_queue(project_id
 CREATE INDEX IF NOT EXISTS idx_build_queue_created ON mvp_build_queue(created_at);
 CREATE INDEX IF NOT EXISTS idx_ppt_queue_status ON ppt_build_queue(status);
 CREATE INDEX IF NOT EXISTS idx_ppt_queue_project ON ppt_build_queue(project_id);
+CREATE INDEX IF NOT EXISTS idx_ppt_queue_created ON ppt_build_queue(created_at);
 
 -- ── 4. RLS (Row Level Security) ──
 
