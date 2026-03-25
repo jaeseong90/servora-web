@@ -14,9 +14,10 @@ interface SidebarProps {
   onLocaleChange?: (l: Locale) => void
   mobileOpen?: boolean
   onMobileClose?: () => void
+  credits?: number | null
 }
 
-export default function Sidebar({ userName, userEmail, onNewService, onLogout, locale = 'ko', onLocaleChange, mobileOpen = false, onMobileClose }: SidebarProps) {
+export default function Sidebar({ userName, userEmail, onNewService, onLogout, locale = 'ko', onLocaleChange, mobileOpen = false, onMobileClose, credits }: SidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [showUserPopup, setShowUserPopup] = useState(false)
@@ -215,7 +216,7 @@ export default function Sidebar({ userName, userEmail, onNewService, onLogout, l
                   <div className="flex items-center gap-3">
                     <span className="material-symbols-outlined text-lg">database</span> {t('nav.remainCredits', locale)}
                   </div>
-                  <span className="text-[10px] font-bold text-secondary">2,450</span>
+                  <span className="text-[10px] font-bold text-secondary">{credits != null ? credits.toLocaleString() : '—'}</span>
                 </a>
                 <a href="#" className="flex items-center gap-3 px-4 py-2.5 text-xs text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors">
                   <span className="material-symbols-outlined text-lg">payments</span> Billing

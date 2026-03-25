@@ -37,6 +37,7 @@ export default function DashboardPage() {
   const [showNotifications, setShowNotifications] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [locale, setLocaleState] = useState<Locale>('ko')
+  const [credits, setCredits] = useState<{ remaining: number; total: number } | null>(null)
   const notifyRef = useRef<HTMLDivElement>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
 
@@ -60,6 +61,11 @@ export default function DashboardPage() {
       setProjects(data || [])
       setLoading(false)
       setLocaleState(getLocale())
+
+      // 크레딧 조회
+      fetch('/api/user/credits')
+        .then(r => r.ok ? r.json() : null)
+        .then(c => { if (c) setCredits({ remaining: c.remaining, total: c.total }) })
     }
 
     fetchData()
@@ -142,16 +148,7 @@ export default function DashboardPage() {
     return cfg ? cfg.step : 0
   }
 
-  const notificationData = [
-    { service: 'Payment API', time: '2 mins ago', action: 'Deployment Success' },
-    { service: 'User Auth', time: '15 mins ago', action: 'Config Updated' },
-    { service: 'Storage S3', time: '1 hour ago', action: 'Scaling active' },
-    { service: 'Catalog Web', time: '3 hours ago', action: 'New branch \'dev\'' },
-    { service: 'Analytics', time: '5 hours ago', action: 'Monthly report' },
-    { service: 'System Core', time: '8 hours ago', action: 'Kernel patched' },
-    { service: 'CDN Edge', time: '10 hours ago', action: 'Cache flushed' },
-    { service: 'DB Primary', time: '12 hours ago', action: 'Backup completed' },
-  ]
+  const notificationData: { service: string; time: string; action: string }[] = []
 
   return (
     <div className="bg-background text-on-background font-body">
@@ -264,6 +261,7 @@ export default function DashboardPage() {
         onLocaleChange={(l) => { setLocale(l); setLocaleState(l) }}
         mobileOpen={sidebarOpen}
         onMobileClose={() => setSidebarOpen(false)}
+        credits={credits?.remaining ?? null}
       />
 
       {/* Main Content Area */}
@@ -300,7 +298,9 @@ export default function DashboardPage() {
                 onClick={() => setShowNotifications(!showNotifications)}
               >
                 <span className="material-symbols-outlined">notifications</span>
-                <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-surface" />
+                {notificationData.length > 0 && (
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-surface" />
+                )}
               </button>
               {/* Notification Popup */}
               {showNotifications && (
@@ -309,31 +309,42 @@ export default function DashboardPage() {
                     <h3 className="text-sm font-bold text-on-surface">{t('notify.title', locale)}</h3>
                     <button className="text-[10px] text-secondary font-bold hover:underline">{t('notify.markRead', locale)}</button>
                   </div>
-                  <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
-                    <table className="w-full text-left text-[11px]">
-                      <thead className="bg-surface-container-highest/30 text-outline sticky top-0">
-                        <tr>
-                          <th className="px-4 py-2 font-bold uppercase tracking-wider">{t('notify.colService', locale)}</th>
-                          <th className="px-4 py-2 font-bold uppercase tracking-wider">{t('notify.colTime', locale)}</th>
-                          <th className="px-4 py-2 font-bold uppercase tracking-wider">{t('notify.colAction', locale)}</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-outline-variant/10">
-                        {notificationData.map((item, idx) => (
-                          <tr key={idx} className="hover:bg-white/5 transition-colors">
-                            <td className="px-4 py-3 font-medium text-on-surface">{item.service}</td>
-                            <td className="px-4 py-3 text-on-surface-variant">{item.time}</td>
-                            <td className="px-4 py-3 text-on-surface-variant">{item.action}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="p-3 bg-surface-container-highest/20 text-center border-t border-outline-variant/10">
-                    <button className="text-[10px] text-outline hover:text-on-surface transition-colors font-bold uppercase tracking-widest">
-                      {t('notify.viewAll', locale)}
-                    </button>
-                  </div>
+                  {notificationData.length === 0 ? (
+                    <div className="py-12 text-center">
+                      <span className="material-symbols-outlined text-3xl text-on-surface-variant/30 mb-2">notifications_off</span>
+                      <p className="text-sm text-on-surface-variant/60">
+                        {locale === 'ko' ? '아직 알림이 없습니다' : 'No notifications yet'}
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
+                        <table className="w-full text-left text-[11px]">
+                          <thead className="bg-surface-container-highest/30 text-outline sticky top-0">
+                            <tr>
+                              <th className="px-4 py-2 font-bold uppercase tracking-wider">{t('notify.colService', locale)}</th>
+                              <th className="px-4 py-2 font-bold uppercase tracking-wider">{t('notify.colTime', locale)}</th>
+                              <th className="px-4 py-2 font-bold uppercase tracking-wider">{t('notify.colAction', locale)}</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-outline-variant/10">
+                            {notificationData.map((item, idx) => (
+                              <tr key={idx} className="hover:bg-white/5 transition-colors">
+                                <td className="px-4 py-3 font-medium text-on-surface">{item.service}</td>
+                                <td className="px-4 py-3 text-on-surface-variant">{item.time}</td>
+                                <td className="px-4 py-3 text-on-surface-variant">{item.action}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="p-3 bg-surface-container-highest/20 text-center border-t border-outline-variant/10">
+                        <button className="text-[10px] text-outline hover:text-on-surface transition-colors font-bold uppercase tracking-widest">
+                          {t('notify.viewAll', locale)}
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -361,7 +372,9 @@ export default function DashboardPage() {
                   <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
                     <div className="bg-surface-container/50 backdrop-blur-md p-6 rounded-2xl border border-outline-variant/10">
                       <div className="text-on-surface-variant text-xs font-bold mb-1 uppercase tracking-widest">{t('dash.credits', locale)}</div>
-                      <div className="text-3xl font-black text-secondary">2,450</div>
+                      <div className="text-3xl font-black text-secondary">
+                        {credits ? credits.remaining.toLocaleString() : '—'}
+                      </div>
                     </div>
                     <div className="bg-surface-container/50 backdrop-blur-md p-6 rounded-2xl border border-outline-variant/10">
                       <div className="text-on-surface-variant text-xs font-bold mb-1 uppercase tracking-widest">{t('dash.activeServices', locale)}</div>

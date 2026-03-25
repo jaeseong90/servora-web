@@ -25,6 +25,9 @@ export async function POST(
   if (!project || project.user_id !== user.id)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  if (project.status !== 'PLANNING')
+    return NextResponse.json({ error: '기획 단계에서만 생성할 수 있습니다.' }, { status: 400 })
+
   const body = await request.json()
   const parsed = questionnaireSchema.safeParse(body)
   if (!parsed.success) {
@@ -34,7 +37,9 @@ export async function POST(
 
   return createStreamingResponse({
     supabase,
+    userId: user.id,
     projectId,
+    action: 'planning_generate',
     systemPrompt: loadPrompt('planner-system.txt'),
     userPrompt: buildPlannerUserPrompt(questionnaire),
     questionnaireData: questionnaire,

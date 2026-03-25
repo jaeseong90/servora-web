@@ -23,6 +23,9 @@ export async function POST(
   if (!project || project.user_id !== user.id)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  if (project.status !== 'PLANNING')
+    return NextResponse.json({ error: '기획 단계에서만 딥다이브할 수 있습니다.' }, { status: 400 })
+
   const body = await request.json()
   const parsed = deepDiveSchema.safeParse(body)
   if (!parsed.success) {
@@ -32,7 +35,9 @@ export async function POST(
 
   return createStreamingResponse({
     supabase,
+    userId: user.id,
     projectId,
+    action: 'planning_deep_dive',
     systemPrompt: loadPrompt('plan-deep-diver-system.txt'),
     userPrompt: `## 현재 기획안\n\n${currentContent}\n\n## 딥다이브 대상 항목\n\n${section}`,
   })

@@ -1,25 +1,30 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { streamWithGemini } from '@/lib/ai/gemini'
+import { streamWithGemini, type TokenUsage } from '@/lib/ai/gemini'
 import { insertDocumentWithVersion } from './insert-document'
+import { logTokenUsage, type UsageAction } from '@/lib/usage/log-usage'
 
 interface StreamingOptions {
   supabase: SupabaseClient
+  userId: string
   projectId: string
   systemPrompt: string
   userPrompt: string
+  action: UsageAction
   questionnaireData?: Record<string, string> | null
   onBeforeSave?: (supabase: SupabaseClient, fullContent: string) => Promise<void>
 }
 
 /**
- * AI 스트리밍 생성 + DB 저장을 위한 공통 SSE Response를 생성합니다.
+ * AI 스트리밍 생성 + DB 저장 + 사용량 기록을 위한 공통 SSE Response를 생성합니다.
  */
 export function createStreamingResponse(options: StreamingOptions): Response {
   const {
     supabase,
+    userId,
     projectId,
     systemPrompt,
     userPrompt,
+    action,
     questionnaireData = null,
     onBeforeSave,
   } = options
@@ -27,9 +32,11 @@ export function createStreamingResponse(options: StreamingOptions): Response {
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
     async start(controller) {
+      const usage: TokenUsage = { inputTokens: 0, outputTokens: 0 }
+
       try {
         let fullContent = ''
-        for await (const chunk of streamWithGemini(systemPrompt, userPrompt)) {
+        for await (const chunk of streamWithGemini(systemPrompt, userPrompt, undefined, usage)) {
           fullContent += chunk
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`)
@@ -46,6 +53,9 @@ export function createStreamingResponse(options: StreamingOptions): Response {
           fullContent,
           questionnaireData,
         )
+
+        // 토큰 사용량 기록
+        await logTokenUsage(supabase, userId, projectId, action, usage)
 
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ type: 'complete', version: nextVersion })}\n\n`)

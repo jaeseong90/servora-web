@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { generateWithGemini } from '@/lib/ai/gemini'
 import { loadPrompt } from '@/lib/prompts'
+import { logTokenUsage } from '@/lib/usage/log-usage'
 
 export async function POST(
   _request: NextRequest,
@@ -16,6 +17,9 @@ export async function POST(
     .from('projects').select('*').eq('id', projectId).single()
   if (!project || project.user_id !== user.id)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  if (project.status !== 'DESIGN' && project.status !== 'MVP')
+    return NextResponse.json({ error: '디자인 또는 MVP 단계에서만 MVP를 생성할 수 있습니다.' }, { status: 400 })
 
   // 확정된 기획안 가져오기
   const { data: planDoc } = await supabase
@@ -62,6 +66,12 @@ export async function POST(
     const result = await generateWithGemini(systemPrompt, userPrompt, {
       maxTokens: 8192,
       temperature: 0.3,
+    })
+
+    // 토큰 사용량 기록
+    await logTokenUsage(supabase, user.id, projectId, 'mvp_generate', {
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
     })
 
     // 큐에 등록

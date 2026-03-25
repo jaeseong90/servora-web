@@ -1,5 +1,10 @@
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
 
+export interface TokenUsage {
+  inputTokens: number
+  outputTokens: number
+}
+
 interface GeminiResponse {
   content: string
   inputTokens: number
@@ -53,7 +58,8 @@ export async function generateWithGemini(
 export async function* streamWithGemini(
   systemPrompt: string,
   userPrompt: string,
-  options?: { model?: string; maxTokens?: number }
+  options?: { model?: string; maxTokens?: number },
+  usageTracker?: TokenUsage,
 ): AsyncGenerator<string> {
   const model = options?.model || 'gemini-2.5-flash'
   const apiKey = process.env.GEMINI_API_KEY
@@ -92,6 +98,10 @@ export async function* streamWithGemini(
           const json = JSON.parse(line.slice(6))
           const text = json.candidates?.[0]?.content?.parts?.[0]?.text
           if (text) yield text
+          if (json.usageMetadata && usageTracker) {
+            usageTracker.inputTokens = json.usageMetadata.promptTokenCount || 0
+            usageTracker.outputTokens = json.usageMetadata.candidatesTokenCount || 0
+          }
         } catch { /* 파싱 실패 무시 */ }
       }
     }

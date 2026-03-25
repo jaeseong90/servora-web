@@ -61,6 +61,18 @@ export interface MvpBuildQueue {
   completed_at: string | null
 }
 
+// API 사용량 로그
+export interface ApiUsageLog {
+  id: number
+  user_id: string
+  project_id: number | null
+  action: string
+  model: string
+  input_tokens: number
+  output_tokens: number
+  created_at: string
+}
+
 // MVP 프로젝트
 export interface MvpProject {
   id: number
