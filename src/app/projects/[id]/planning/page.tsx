@@ -131,10 +131,20 @@ export default function PlanningPage() {
     const reader = response.body?.getReader()
     if (!reader) return
     const decoder = new TextDecoder()
+    const STREAM_TIMEOUT_MS = 120_000 // 2분 타임아웃
+    let lastChunkTime = Date.now()
 
     while (true) {
+      const timeSinceLast = Date.now() - lastChunkTime
+      if (timeSinceLast > STREAM_TIMEOUT_MS) {
+        setErrorMsg(locale === 'ko' ? '응답 시간이 초과되었습니다. 다시 시도해주세요.' : 'Response timed out. Please try again.')
+        reader.cancel()
+        break
+      }
+
       const { done, value } = await reader.read()
       if (done) break
+      lastChunkTime = Date.now()
       const chunk = decoder.decode(value, { stream: true })
       for (const line of chunk.split('\n')) {
         if (!line.startsWith('data: ')) continue
@@ -358,7 +368,7 @@ export default function PlanningPage() {
               {locale === 'ko' ? '잠시 후 다시 시도해주세요.' : 'Please try again in a moment.'}
             </p>
           </div>
-          <button onClick={() => setErrorMsg('')} className="text-on-surface-variant hover:text-on-surface">
+          <button onClick={() => setErrorMsg('')} className="text-on-surface-variant hover:text-on-surface" aria-label={locale === 'ko' ? '닫기' : 'Close'}>
             <span className="material-symbols-outlined text-sm">close</span>
           </button>
         </div>

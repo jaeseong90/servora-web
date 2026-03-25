@@ -77,6 +77,20 @@ export default function DashboardPage() {
     }
   }, [showNewServiceModal])
 
+  // Escape 키로 모달 닫기
+  useEffect(() => {
+    if (!showNewServiceModal) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !creating) {
+        setShowNewServiceModal(false)
+        setNewServiceName('')
+        setNewServiceDesc('')
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [showNewServiceModal, creating])
+
   // Close notification popup on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -154,7 +168,7 @@ export default function DashboardPage() {
     <div className="bg-background text-on-background font-body">
       {/* New Service Modal */}
       {showNewServiceModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-background/80 backdrop-blur-md">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-background/80 backdrop-blur-md" role="dialog" aria-modal="true" aria-label={t('modal.title', locale)}>
           <div className="max-w-xl w-full glass-card p-10 rounded-2xl shadow-[0_0_100px_rgba(124,58,237,0.2)] border border-outline-variant/20 relative overflow-hidden">
             {/* Glow effects */}
             <div className="absolute -top-20 -left-20 w-64 h-64 bg-primary-container/20 rounded-full blur-[80px]" />
@@ -162,6 +176,7 @@ export default function DashboardPage() {
             <button
               className="absolute top-6 right-6 text-on-surface-variant hover:text-on-surface transition-colors"
               onClick={() => setShowNewServiceModal(false)}
+              aria-label={locale === 'ko' ? '닫기' : 'Close'}
             >
               <span className="material-symbols-outlined">close</span>
             </button>
@@ -280,6 +295,7 @@ export default function DashboardPage() {
             <button
               className="md:hidden p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50"
               onClick={() => setSidebarOpen(true)}
+              aria-label={locale === 'ko' ? '메뉴 열기' : 'Open menu'}
             >
               <span className="material-symbols-outlined">menu</span>
             </button>
@@ -296,6 +312,8 @@ export default function DashboardPage() {
               <button
                 className="relative w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-secondary hover:bg-surface-container/50 transition-all"
                 onClick={() => setShowNotifications(!showNotifications)}
+                aria-label={locale === 'ko' ? '알림' : 'Notifications'}
+                aria-expanded={showNotifications}
               >
                 <span className="material-symbols-outlined">notifications</span>
                 {notificationData.length > 0 && (
@@ -563,6 +581,10 @@ export default function DashboardPage() {
                   <div
                     className="flex flex-col items-center justify-center p-12 rounded-3xl border-2 border-dashed border-outline-variant/20 bg-surface-container-lowest/50 text-center group hover:border-secondary/30 transition-colors cursor-pointer"
                     onClick={() => setShowNewServiceModal(true)}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={locale === 'ko' ? '새 서비스 추가' : 'Add new service'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setShowNewServiceModal(true) }}
                   >
                     <div className="h-16 w-16 rounded-full bg-surface-container flex items-center justify-center mb-6 text-on-surface-variant/40 group-hover:scale-110 transition-transform">
                       <span className="material-symbols-outlined text-4xl">inventory_2</span>
@@ -583,6 +605,7 @@ export default function DashboardPage() {
       <button
         className="fixed bottom-8 right-8 h-16 w-16 bg-gradient-to-br from-primary-container to-secondary rounded-full flex items-center justify-center shadow-[0_10px_30px_rgba(124,58,237,0.4)] hover:shadow-[0_15px_40px_rgba(124,58,237,0.6)] hover:-translate-y-1 active:translate-y-0 active:scale-90 transition-all z-50"
         onClick={() => setShowNewServiceModal(true)}
+        aria-label={locale === 'ko' ? '새 서비스 만들기' : 'Create new service'}
       >
         <span className="material-symbols-outlined text-on-primary text-3xl">add</span>
       </button>
