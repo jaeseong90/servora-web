@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { generateWithGemini } from '@/lib/ai/gemini'
 import { loadPrompt } from '@/lib/prompts'
 import { logTokenUsage } from '@/lib/usage/log-usage'
+import { checkAiRateLimit } from '@/lib/ratelimit'
 
 export async function POST(
   _request: NextRequest,
@@ -12,6 +13,9 @@ export async function POST(
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const rateLimited = await checkAiRateLimit(user.id)
+  if (rateLimited) return rateLimited
 
   const { data: project } = await supabase
     .from('projects').select('*').eq('id', projectId).single()
