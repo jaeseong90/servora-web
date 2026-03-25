@@ -22,6 +22,7 @@ export default function FeedbackPanel({
         value={feedback}
         onChange={(e) => onFeedbackChange(e.target.value)}
         rows={4}
+        maxLength={10000}
         className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant/20 rounded-xl focus:ring-2 focus:ring-primary/40 focus:border-transparent outline-none resize-y text-sm text-on-surface placeholder:text-on-surface-variant/40"
         placeholder={t('plan.feedbackPlaceholder', locale)}
       />

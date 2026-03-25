@@ -202,15 +202,18 @@ export default function PlanningPage() {
       })
 
       if (!response.ok) {
-        setErrorMsg(t('plan.errorGenerate', locale))
-        setShowForm(true)
+        if (response.status === 429) {
+          setErrorMsg(locale === 'ko' ? '요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요.' : 'Too many requests. Please wait a moment.')
+        } else {
+          const data = await response.json().catch(() => null)
+          setErrorMsg(data?.error || t('plan.errorGenerate', locale))
+        }
         return
       }
 
       await readStream(response)
     } catch {
       setErrorMsg(t('plan.errorGenerate', locale))
-      setShowForm(true)
     } finally {
       setIsGenerating(false)
     }
@@ -231,7 +234,11 @@ export default function PlanningPage() {
       })
 
       if (!response.ok) {
-        setErrorMsg(t('plan.errorGenerate', locale))
+        if (response.status === 429) {
+          setErrorMsg(locale === 'ko' ? '요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요.' : 'Too many requests. Please wait a moment.')
+        } else {
+          setErrorMsg(t('plan.errorGenerate', locale))
+        }
         return
       }
 
@@ -258,7 +265,11 @@ export default function PlanningPage() {
       })
 
       if (!response.ok) {
-        setErrorMsg(t('plan.errorGenerate', locale))
+        if (response.status === 429) {
+          setErrorMsg(locale === 'ko' ? '요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요.' : 'Too many requests. Please wait a moment.')
+        } else {
+          setErrorMsg(t('plan.errorGenerate', locale))
+        }
         return
       }
 
