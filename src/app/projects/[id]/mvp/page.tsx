@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { t, getLocale, type Locale } from '@/lib/i18n'
 import type { MvpBuildQueue } from '@/types'
 
@@ -58,14 +59,26 @@ export default function MvpPage() {
     fetchStatus().finally(() => setInitialLoading(false))
   }, [fetchStatus])
 
-  // 폴링: PENDING 또는 BUILDING 상태일 때 5초마다 확인
+  // Realtime 구독: mvp_build_queue 변경 감지
   useEffect(() => {
     if (!buildStatus) return
     if (buildStatus.status !== 'PENDING' && buildStatus.status !== 'BUILDING') return
 
-    const interval = setInterval(fetchStatus, 5000)
-    return () => clearInterval(interval)
-  }, [buildStatus, fetchStatus])
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`mvp-${projectId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'mvp_build_queue',
+        filter: `project_id=eq.${projectId}`,
+      }, () => {
+        fetchStatus()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [buildStatus, fetchStatus, projectId])
 
   const handleGenerate = async () => {
     if (!confirm(t('mvp.generateConfirm', locale))) return

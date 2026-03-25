@@ -87,12 +87,14 @@ export default function PlanningPage() {
     }
   }, [])
 
-  // --- PPT polling ---
+  // --- PPT Realtime subscription ---
 
   useEffect(() => {
     if (!document) { setPptStatus(null); return }
-    const checkPpt = async () => {
-      const supabase = createClient()
+    const supabase = createClient()
+
+    // 초기 상태 조회
+    const fetchInitial = async () => {
       const { data } = await supabase
         .from('ppt_build_queue')
         .select('status, output_url')
@@ -100,9 +102,25 @@ export default function PlanningPage() {
         .order('created_at', { ascending: false })
         .limit(1)
         .single()
-      const newStatus = data?.status || null
+      setPptStatus(data?.status || null)
       setPptOutputUrl(data?.output_url || null)
-      if (pptStatus && newStatus !== pptStatus) {
+    }
+    fetchInitial()
+
+    // Realtime 구독
+    const channel = supabase
+      .channel(`ppt-${document.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'ppt_build_queue',
+        filter: `document_id=eq.${document.id}`,
+      }, (payload) => {
+        const row = payload.new as { status?: string; output_url?: string }
+        const newStatus = row.status || null
+        setPptOutputUrl(row.output_url || null)
+
+        // 상태 변경 시 알림
         if (newStatus === 'COMPLETED' || newStatus === 'FAILED') {
           if ('Notification' in window && Notification.permission === 'granted') {
             const body = newStatus === 'COMPLETED'
@@ -111,15 +129,12 @@ export default function PlanningPage() {
             new Notification('Servora', { body, icon: '/favicon.ico' })
           }
         }
-      }
-      setPptStatus(newStatus)
-    }
-    checkPpt()
-    if (pptStatus === 'PENDING' || pptStatus === 'BUILDING') {
-      const interval = setInterval(checkPpt, 5000)
-      return () => clearInterval(interval)
-    }
-  }, [document, pptStatus, locale])
+        setPptStatus(newStatus)
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [document, locale])
 
   // --- SSE stream reader (shared) ---
 
