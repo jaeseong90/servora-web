@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import LandingAnimations from '@/components/landing/LandingAnimations'
+import LandingLocaleToggle from '@/components/landing/LandingLocaleToggle'
 import './landing.css'
 
 export default function Home() {
@@ -35,7 +36,10 @@ export default function Home() {
           <a href="#">Support</a>
           <a href="#">Pricing</a>
         </nav>
-        <Link href="/login" className="nav-sign">Sign in</Link>
+        <div className="flex items-center gap-3">
+          <LandingLocaleToggle />
+          <Link href="/login" className="nav-sign">Sign in</Link>
+        </div>
       </header>
 
       {/* HERO */}

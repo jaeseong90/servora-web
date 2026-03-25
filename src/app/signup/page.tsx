@@ -95,6 +95,10 @@ export default function SignupPage() {
         <div className="text-center mb-8">
           <Link href="/" className="text-3xl font-bold bg-gradient-to-br from-primary-container to-secondary bg-clip-text text-transparent">Servora</Link>
           <p className="mt-2 text-on-surface-variant">{t('auth.signup.title', locale)}</p>
+          <Link href="/" className="mt-3 inline-flex items-center gap-1 text-xs text-on-surface-variant hover:text-secondary transition-colors">
+            <span className="material-symbols-outlined text-sm">arrow_back</span>
+            {locale === 'ko' ? '홈으로' : 'Back to Home'}
+          </Link>
         </div>
 
         {emailSent ? (
