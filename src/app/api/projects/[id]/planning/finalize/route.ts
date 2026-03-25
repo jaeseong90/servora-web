@@ -15,6 +15,19 @@ export async function POST(
   if (!project || project.user_id !== user.id)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  // 이미 확정된 문서가 있는지 확인 (중복 확정 방지)
+  const { data: existingFinalized } = await supabase
+    .from('planning_documents')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('is_finalized', true)
+    .limit(1)
+    .single()
+
+  if (existingFinalized) {
+    return NextResponse.json({ error: '이미 확정된 기획안이 존재합니다.' }, { status: 409 })
+  }
+
   // 최신 기획 문서 확정
   const { data: latestDoc } = await supabase
     .from('planning_documents')

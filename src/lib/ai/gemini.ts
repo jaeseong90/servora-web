@@ -16,10 +16,10 @@ export async function generateWithGemini(
   if (!apiKey) throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.')
 
   const response = await fetch(
-    `${GEMINI_API_URL}/${model}:generateContent?key=${apiKey}`,
+    `${GEMINI_API_URL}/${model}:generateContent`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: systemPrompt }] },
         contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
@@ -60,10 +60,10 @@ export async function* streamWithGemini(
   if (!apiKey) throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.')
 
   const response = await fetch(
-    `${GEMINI_API_URL}/${model}:streamGenerateContent?alt=sse&key=${apiKey}`,
+    `${GEMINI_API_URL}/${model}:streamGenerateContent?alt=sse`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: systemPrompt }] },
         contents: [{ role: 'user', parts: [{ text: userPrompt }] }],

@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { streamWithGemini } from '@/lib/ai/gemini'
 import { loadPrompt } from '@/lib/prompts'
+import { createStreamingResponse } from '@/lib/planning/create-streaming-response'
+import { z } from 'zod'
+
+const feedbackSchema = z.object({
+  feedback: z.string().min(1).max(10000),
+  currentContent: z.string().min(1).max(100000),
+})
 
 export async function POST(
   request: NextRequest,
@@ -18,62 +24,33 @@ export async function POST(
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await request.json()
-  const { feedback, currentContent } = body
+  const parsed = feedbackSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
+  }
+  const { feedback, currentContent } = parsed.data
 
-  const systemPrompt = loadPrompt('plan-refiner-system.txt')
-  const userPrompt = `## 현재 기획안\n\n${currentContent}\n\n## 피드백\n\n${feedback}`
+  return createStreamingResponse({
+    supabase,
+    projectId,
+    systemPrompt: loadPrompt('plan-refiner-system.txt'),
+    userPrompt: `## 현재 기획안\n\n${currentContent}\n\n## 피드백\n\n${feedback}`,
+    onBeforeSave: async (sb) => {
+      const { data: latestDoc } = await sb
+        .from('planning_documents')
+        .select('id')
+        .eq('project_id', projectId)
+        .order('version', { ascending: false })
+        .limit(1)
+        .single()
 
-  const encoder = new TextEncoder()
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        let fullContent = ''
-        for await (const chunk of streamWithGemini(systemPrompt, userPrompt)) {
-          fullContent += chunk
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`))
-        }
-
-        // 피드백 기록
-        const latestDoc = await supabase
-          .from('planning_documents')
-          .select('id, version')
-          .eq('project_id', projectId)
-          .order('version', { ascending: false })
-          .limit(1)
-          .single()
-
-        if (latestDoc.data) {
-          await supabase.from('planning_feedbacks').insert({
-            document_id: latestDoc.data.id,
-            project_id: Number(projectId),
-            content: feedback,
-          })
-        }
-
-        const nextVersion = (latestDoc.data?.version || 0) + 1
-
-        await supabase.from('planning_documents').insert({
+      if (latestDoc) {
+        await sb.from('planning_feedbacks').insert({
+          document_id: latestDoc.id,
           project_id: Number(projectId),
-          content: fullContent,
-          questionnaire_data: null,
-          version: nextVersion,
+          content: feedback,
         })
-
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'complete', version: nextVersion })}\n\n`))
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Unknown error'
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message })}\n\n`))
-      } finally {
-        controller.close()
       }
-    },
-  })
-
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
     },
   })
 }

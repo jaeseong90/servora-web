@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { streamWithGemini } from '@/lib/ai/gemini'
 import { loadPrompt } from '@/lib/prompts'
+import { createStreamingResponse } from '@/lib/planning/create-streaming-response'
+import { z } from 'zod'
+
+const questionnaireSchema = z.object({
+  questionnaire: z.record(z.string(), z.string().max(5000)).refine(
+    (q) => Object.values(q).filter(v => v.trim()).length >= 3,
+    { message: '최소 3개 질문에 답변해야 합니다.' }
+  ),
+})
 
 export async function POST(
   request: NextRequest,
@@ -18,54 +26,18 @@ export async function POST(
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await request.json()
-  const questionnaire = body.questionnaire as Record<string, string>
+  const parsed = questionnaireSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid input' }, { status: 400 })
+  }
+  const { questionnaire } = parsed.data
 
-  const systemPrompt = loadPrompt('planner-system.txt')
-  const userPrompt = buildPlannerUserPrompt(questionnaire)
-
-  const encoder = new TextEncoder()
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        let fullContent = ''
-        for await (const chunk of streamWithGemini(systemPrompt, userPrompt)) {
-          fullContent += chunk
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`))
-        }
-
-        const latestDoc = await supabase
-          .from('planning_documents')
-          .select('version')
-          .eq('project_id', projectId)
-          .order('version', { ascending: false })
-          .limit(1)
-          .single()
-
-        const nextVersion = (latestDoc.data?.version || 0) + 1
-
-        await supabase.from('planning_documents').insert({
-          project_id: Number(projectId),
-          content: fullContent,
-          questionnaire_data: questionnaire,
-          version: nextVersion,
-        })
-
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'complete', version: nextVersion })}\n\n`))
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Unknown error'
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message })}\n\n`))
-      } finally {
-        controller.close()
-      }
-    },
-  })
-
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    },
+  return createStreamingResponse({
+    supabase,
+    projectId,
+    systemPrompt: loadPrompt('planner-system.txt'),
+    userPrompt: buildPlannerUserPrompt(questionnaire),
+    questionnaireData: questionnaire,
   })
 }
 

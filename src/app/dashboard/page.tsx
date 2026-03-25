@@ -97,39 +97,40 @@ export default function DashboardPage() {
 
     setCreating(true)
 
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setCreating(false); return }
-
-    const { data, error } = await supabase
-      .from('projects')
-      .insert({
-        title: newServiceName.trim(),
-        description: newServiceDesc.trim() || null,
-        user_id: user.id,
-        status: 'PLANNING',
+    try {
+      const response = await fetch('/api/projects/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newServiceName.trim(),
+          description: newServiceDesc.trim() || null,
+        }),
       })
-      .select()
-      .single()
 
-    if (error) {
+      if (!response.ok) {
+        setCreating(false)
+        alert(t('modal.createFailed', locale))
+        return
+      }
+
+      const { project } = await response.json()
+
+      // 성공 애니메이션
+      setCreateSuccess(true)
+      await new Promise(r => setTimeout(r, 1500))
+
+      setShowNewServiceModal(false)
+      setCreating(false)
+      setCreateSuccess(false)
+      setNewServiceName('')
+      setNewServiceDesc('')
+
+      if (project) {
+        router.push(`/projects/${project.id}/planning`)
+      }
+    } catch {
       setCreating(false)
       alert(t('modal.createFailed', locale))
-      return
-    }
-
-    // 성공 애니메이션
-    setCreateSuccess(true)
-    await new Promise(r => setTimeout(r, 1500))
-
-    setShowNewServiceModal(false)
-    setCreating(false)
-    setCreateSuccess(false)
-    setNewServiceName('')
-    setNewServiceDesc('')
-
-    if (data) {
-      router.push(`/projects/${data.id}/planning`)
     }
   }
 
