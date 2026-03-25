@@ -138,17 +138,6 @@ export default function Sidebar({ userName, userEmail, onNewService, onLogout, l
 
       {/* Section 4: Utility & User */}
       <div className="mt-auto space-y-1 relative">
-        {!collapsed && (
-          <div className="px-6 mb-4">
-            <a href="#" className="w-full flex items-center justify-between p-3 bg-surface-container-highest/40 rounded-xl border border-outline-variant/10 hover:bg-surface-container-highest/60 transition-colors group">
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-secondary">{t('nav.upgrade', locale)}</span>
-                <span className="text-[10px] text-on-surface-variant">{t('nav.unlockEnterprise', locale)}</span>
-              </div>
-              <span className="material-symbols-outlined text-secondary group-hover:translate-x-1 transition-transform text-sm">upgrade</span>
-            </a>
-          </div>
-        )}
         <a href="#" className={`flex items-center gap-4 text-on-surface-variant hover:text-on-surface py-2 px-6 transition-colors text-xs font-medium ${collapsed ? 'justify-center px-0' : ''}`}>
           <span className="material-symbols-outlined text-[18px]">mail</span>
           {!collapsed && <span>{t('nav.contact', locale)}</span>}

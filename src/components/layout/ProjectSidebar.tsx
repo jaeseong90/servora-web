@@ -177,17 +177,6 @@ export default function ProjectSidebar({ project, mobileOpen = false, onMobileCl
 
         {/* Bottom: User */}
         <div className="mt-auto space-y-1 relative">
-          {!collapsed && (
-            <div className="px-6 mb-4">
-              <a href="#" className="w-full flex items-center justify-between p-3 bg-surface-container-highest/40 rounded-xl border border-outline-variant/10 hover:bg-surface-container-highest/60 transition-colors group">
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-secondary">Upgrade Plan</span>
-                  <span className="text-[10px] text-on-surface-variant">Unlock Enterprise</span>
-                </div>
-                <span className="material-symbols-outlined text-secondary group-hover:translate-x-1 transition-transform text-sm">upgrade</span>
-              </a>
-            </div>
-          )}
           <div
             className={`mt-4 pt-4 border-t border-outline-variant/10 relative ${collapsed ? 'px-4' : 'px-6'}`}
             onMouseEnter={() => setShowUserPopup(true)}
