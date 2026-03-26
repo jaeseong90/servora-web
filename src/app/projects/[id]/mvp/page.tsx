@@ -44,6 +44,11 @@ export default function MvpPage() {
           }
         }
 
+        // 완료/실패 시 sessionStorage 정리
+        if (newStatus === 'COMPLETED' || newStatus === 'FAILED' || !newBuild) {
+          sessionStorage.removeItem(`mvp-generating-${projectId}`)
+        }
+
         prevStatusRef.current = newStatus
         setBuildStatus(newBuild)
       }
@@ -56,8 +61,18 @@ export default function MvpPage() {
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission()
     }
-    fetchStatus().finally(() => setInitialLoading(false))
-  }, [fetchStatus])
+
+    // 새로고침 시 즉시 빌드 중 상태 복원 (API 응답 전 버튼 노출 방지)
+    const wasPending = sessionStorage.getItem(`mvp-generating-${projectId}`)
+    if (wasPending) {
+      setGenerating(true)
+    }
+
+    fetchStatus().finally(() => {
+      setInitialLoading(false)
+      setGenerating(false)
+    })
+  }, [fetchStatus, projectId])
 
   // Realtime 구독: mvp_build_queue 변경 감지
   useEffect(() => {
@@ -90,6 +105,7 @@ export default function MvpPage() {
       })
 
       if (response.ok) {
+        sessionStorage.setItem(`mvp-generating-${projectId}`, '1')
         await fetchStatus()
       } else {
         const data = await response.json()

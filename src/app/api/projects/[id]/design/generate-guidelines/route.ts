@@ -49,27 +49,52 @@ export async function POST(
   const systemPrompt = loadPrompt('mvp-guidelines-system.txt')
   const userPrompt = buildUserPrompt(planDoc.content, pref, project.title)
 
+  // 생성 시작: 상태를 GENERATING으로 변경
+  await supabase
+    .from('design_preferences')
+    .update({
+      guidelines_status: 'GENERATING',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('project_id', projectId)
+
   const encoder = new TextEncoder()
   const usage: TokenUsage = { inputTokens: 0, outputTokens: 0 }
+  const CHECKPOINT_INTERVAL = 30_000 // 30초마다 중간 저장
 
   const stream = new ReadableStream({
     async start(controller) {
       try {
         let fullContent = ''
+        let lastCheckpoint = Date.now()
+
         for await (const chunk of streamWithGemini(systemPrompt, userPrompt, { maxTokens: 32768 }, usage)) {
           fullContent += chunk
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`)
           )
+
+          // 주기적 중간 저장
+          if (Date.now() - lastCheckpoint >= CHECKPOINT_INTERVAL) {
+            await supabase
+              .from('design_preferences')
+              .update({
+                mvp_guidelines: fullContent,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('project_id', projectId)
+            lastCheckpoint = Date.now()
+          }
         }
 
-        // DB 저장
+        // 완료: DB 저장 + 상태 COMPLETED
         const currentVersion = pref?.guidelines_version || 0
         await supabase
           .from('design_preferences')
           .update({
             mvp_guidelines: fullContent,
             guidelines_version: currentVersion + 1,
+            guidelines_status: 'COMPLETED',
             updated_at: new Date().toISOString(),
           })
           .eq('project_id', projectId)
@@ -81,6 +106,15 @@ export async function POST(
           encoder.encode(`data: ${JSON.stringify({ type: 'complete', version: currentVersion + 1 })}\n\n`)
         )
       } catch (error: unknown) {
+        // 에러 시 상태를 IDLE로 복구 (부분 내용은 유지)
+        await supabase
+          .from('design_preferences')
+          .update({
+            guidelines_status: 'IDLE',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('project_id', projectId)
+
         const message = error instanceof Error ? error.message : 'Unknown error'
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ type: 'error', message })}\n\n`)

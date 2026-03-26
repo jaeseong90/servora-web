@@ -59,6 +59,17 @@ export default function DesignPage() {
   const [editingGuidelines, setEditingGuidelines] = useState('')
   const [savingGuidelines, setSavingGuidelines] = useState(false)
   const [guidelinesError, setGuidelinesError] = useState('')
+  const [guidelinesInterrupted, setGuidelinesInterrupted] = useState(false)
+
+  // A: 생성 중 페이지 이탈 방지
+  useEffect(() => {
+    if (!generatingGuidelines) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [generatingGuidelines])
 
   useEffect(() => {
     setLocaleState(getLocale())
@@ -91,6 +102,10 @@ export default function DesignPage() {
           setMvpGuidelines(data.mvp_guidelines)
           setEditingGuidelines(data.mvp_guidelines)
           setGuidelinesVersion(data.guidelines_version || 0)
+        }
+        // B: 중단된 생성 감지
+        if (data.guidelines_status === 'GENERATING') {
+          setGuidelinesInterrupted(true)
         }
       }
     }
@@ -159,6 +174,7 @@ export default function DesignPage() {
     if (!saved) await handleSave()
 
     setGeneratingGuidelines(true)
+    setGuidelinesInterrupted(false)
     setMvpGuidelines('')
     setGuidelinesError('')
     setGuidelinesTab('preview')
@@ -412,8 +428,35 @@ export default function DesignPage() {
             </div>
           )}
 
+          {/* 중단된 생성 감지 */}
+          {guidelinesInterrupted && !generatingGuidelines && (
+            <div className="mb-4 p-4 rounded-xl bg-warning-container/10 border border-warning-container/30">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="material-symbols-outlined text-warning-container text-lg">warning</span>
+                <p className="text-sm font-medium text-on-surface">
+                  {locale === 'ko' ? '이전 생성이 중단되었습니다' : 'Previous generation was interrupted'}
+                </p>
+              </div>
+              {mvpGuidelines && (
+                <p className="text-xs text-on-surface-variant mb-3">
+                  {locale === 'ko'
+                    ? '부분적으로 생성된 내용이 저장되어 있습니다. 다시 생성하면 새로운 지침으로 대체됩니다.'
+                    : 'Partially generated content was saved. Regenerating will replace it.'}
+                </p>
+              )}
+              <button
+                onClick={() => { setGuidelinesInterrupted(false); handleGenerateGuidelines() }}
+                disabled={isLocked}
+                className="px-4 py-2 text-sm font-bold text-white bg-tertiary-container rounded-xl hover:bg-tertiary-container/80 disabled:opacity-50 transition-colors flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-sm">refresh</span>
+                {locale === 'ko' ? '다시 생성하기' : 'Regenerate'}
+              </button>
+            </div>
+          )}
+
           {/* 지침이 없고 생성 중이 아닐 때 */}
-          {!mvpGuidelines && !generatingGuidelines && (
+          {!mvpGuidelines && !generatingGuidelines && !guidelinesInterrupted && (
             <div className="text-center py-8">
               <span className="material-symbols-outlined text-4xl text-on-surface-variant/30 mb-3">auto_awesome</span>
               <p className="text-sm text-on-surface-variant mb-4">
