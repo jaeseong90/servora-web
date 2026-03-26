@@ -56,7 +56,7 @@ export default function DashboardPage() {
       const { data } = await supabase
         .from('projects')
         .select('*')
-        .order('created_at', { ascending: false })
+        .order('updated_at', { ascending: false })
 
       setProjects(data || [])
       setLoading(false)
@@ -156,6 +156,7 @@ export default function DashboardPage() {
 
   const activeCount = projects.length
   const latestProject = projects[0]
+  const recentProjects = projects.slice(0, 3)
 
   const getStepIndex = (status: string) => {
     const cfg = statusConfig[status]
@@ -421,62 +422,62 @@ export default function DashboardPage() {
                   </div>
                 </button>
 
-                {/* Workflow Summary */}
+                {/* Recent Projects */}
                 <div className="lg:col-span-2 glass-card p-8 rounded-3xl border border-outline-variant/10">
-                  <div className="flex justify-between items-center mb-8">
-                    <div className="flex flex-col">
-                      <h3 className="text-lg font-bold flex items-center gap-2">
-                        <span className="material-symbols-outlined text-secondary">analytics</span>
-                        {t('dash.workflowSummary', locale)}
-                      </h3>
-                      <p className="text-sm text-on-surface-variant ml-8 font-medium">
-                        {latestProject ? latestProject.title : t('dash.noService', locale)}
-                      </p>
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-lg font-bold flex items-center gap-2">
+                      <span className="material-symbols-outlined text-secondary">history</span>
+                      {locale === 'ko' ? '최근 작업' : 'Recent Activity'}
+                    </h3>
+                  </div>
+                  {recentProjects.length === 0 ? (
+                    <p className="text-sm text-on-surface-variant text-center py-8">{t('dash.noService', locale)}</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {recentProjects.map((proj) => {
+                        const cfg = statusConfig[proj.status] || statusConfig.PLANNING
+                        const currentStep = getStepIndex(proj.status)
+                        const statusPath = proj.status === 'PLANNING' ? 'planning' : proj.status === 'DESIGN' ? 'design' : 'mvp'
+                        return (
+                          <Link
+                            key={proj.id}
+                            href={`/projects/${proj.id}/${statusPath}`}
+                            className="flex items-center gap-4 p-4 rounded-2xl bg-surface-container-lowest/50 border border-outline-variant/5 hover:border-primary-container/30 transition-all group"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="text-sm font-bold text-on-surface truncate group-hover:text-primary transition-colors">{proj.title}</h4>
+                                <span className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-full ${
+                                  cfg.color === 'secondary'
+                                    ? 'bg-secondary/10 text-secondary border border-secondary/20'
+                                    : 'bg-primary/10 text-primary border border-primary/20'
+                                }`}>
+                                  {cfg.label}
+                                </span>
+                              </div>
+                              <span className="text-[11px] text-on-surface-variant">
+                                {new Date(proj.updated_at || proj.created_at).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US', {
+                                  month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                            {/* Step progress dots */}
+                            <div className="flex gap-1.5">
+                              {workflowSteps.slice(0, 3).map((step, idx) => (
+                                <div
+                                  key={step.label}
+                                  className={`w-2 h-2 rounded-full ${
+                                    idx < currentStep ? 'bg-secondary' : idx === currentStep ? 'bg-primary animate-pulse' : 'bg-outline/30'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span className="material-symbols-outlined text-on-surface-variant/30 group-hover:text-primary text-sm transition-colors">arrow_forward</span>
+                          </Link>
+                        )
+                      })}
                     </div>
-                    {latestProject && (
-                      <Link
-                        href={`/projects/${latestProject.id}/planning`}
-                        className="text-xs text-secondary font-bold hover:underline flex items-center gap-1"
-                      >
-                        {t('dash.detail', locale)} <span className="material-symbols-outlined text-xs">arrow_forward</span>
-                      </Link>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    {workflowSteps.map((step, idx) => {
-                      const currentStep = latestProject ? getStepIndex(latestProject.status) : -1
-                      const isCompleted = idx < currentStep
-                      const isCurrent = idx === currentStep
-                      const isLocked = idx > currentStep
-                      let percentage = '0'
-                      if (isCompleted) percentage = '100'
-                      else if (isCurrent) percentage = '50'
-
-                      return (
-                        <div
-                          key={step.label}
-                          className={`flex flex-col gap-1.5 p-4 rounded-2xl bg-surface-container-lowest/50 border border-outline-variant/5 ${
-                            isLocked ? 'opacity-50' : ''
-                          }`}
-                        >
-                          <span className="text-[9px] text-outline font-bold uppercase tracking-widest">{step.label}</span>
-                          <span className={`text-[14px] font-bold ${
-                            isCompleted ? 'text-secondary' : isCurrent ? 'text-primary' : 'text-outline'
-                          }`}>
-                            {percentage}%
-                          </span>
-                          <div className="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden mt-1">
-                            <div
-                              className={`h-full rounded-full ${
-                                isCompleted ? 'bg-secondary' : isCurrent ? 'bg-primary' : 'bg-outline'
-                              }`}
-                              style={{ width: `${percentage}%` }}
-                            />
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
+                  )}
                 </div>
               </div>
 
