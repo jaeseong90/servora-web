@@ -62,9 +62,12 @@ export async function POST(
     .eq('project_id', projectId)
     .single()
 
-  // MVP 스펙 추출
+  // MVP 스펙 추출 (지침이 있으면 함께 전달)
   const systemPrompt = loadPrompt('mvp-spec-extractor-system.txt')
-  const userPrompt = `## 기획안\n\n${planDoc.content}\n\n## 디자인 선호도\n\n${JSON.stringify(designPref || {}, null, 2)}`
+  const guidelinesSection = designPref?.mvp_guidelines
+    ? `\n\n## MVP 구현 지침\n\n${designPref.mvp_guidelines}`
+    : ''
+  const userPrompt = `## 기획안\n\n${planDoc.content}\n\n## 디자인 선호도\n\n${JSON.stringify(designPref || {}, null, 2)}${guidelinesSection}`
 
   try {
     const result = await generateWithGemini(systemPrompt, userPrompt, {
