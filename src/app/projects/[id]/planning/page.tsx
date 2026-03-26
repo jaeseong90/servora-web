@@ -8,7 +8,6 @@ import type { Project, PlanningDocument } from '@/types'
 import QuestionnaireForm from '@/components/planning/QuestionnaireForm'
 import PlanViewer from '@/components/planning/PlanViewer'
 import FeedbackPanel from '@/components/planning/FeedbackPanel'
-import DeepDivePanel from '@/components/planning/DeepDivePanel'
 import VersionHistory from '@/components/planning/VersionHistory'
 
 export default function PlanningPage() {
@@ -24,7 +23,6 @@ export default function PlanningPage() {
   const [streamContent, setStreamContent] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [feedback, setFeedback] = useState('')
-  const [deepDiveSection, setDeepDiveSection] = useState('')
   const [showForm, setShowForm] = useState(true)
   const [errorMsg, setErrorMsg] = useState('')
   const [pptRequesting, setPptRequesting] = useState(false)
@@ -250,37 +248,6 @@ export default function PlanningPage() {
     }
   }
 
-  const handleDeepDive = async () => {
-    if (!deepDiveSection.trim()) return
-
-    setIsGenerating(true)
-    setStreamContent('')
-    setErrorMsg('')
-
-    try {
-      const response = await fetch(`/api/projects/${projectId}/planning/deep-dive`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ section: deepDiveSection, currentContent: document?.content }),
-      })
-
-      if (!response.ok) {
-        if (response.status === 429) {
-          setErrorMsg(locale === 'ko' ? '요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요.' : 'Too many requests. Please wait a moment.')
-        } else {
-          setErrorMsg(t('plan.errorGenerate', locale))
-        }
-        return
-      }
-
-      await readStream(response, undefined, () => setDeepDiveSection(''))
-    } catch {
-      setErrorMsg(t('plan.errorGenerate', locale))
-    } finally {
-      setIsGenerating(false)
-    }
-  }
-
   const handleRequestPpt = async () => {
     if (!document) return
     setPptRequesting(true)
@@ -440,13 +407,6 @@ export default function PlanningPage() {
                   feedback={feedback}
                   onFeedbackChange={setFeedback}
                   onSubmit={handleFeedback}
-                />
-
-                <DeepDivePanel
-                  locale={locale}
-                  section={deepDiveSection}
-                  onSectionChange={setDeepDiveSection}
-                  onSubmit={handleDeepDive}
                 />
 
                 {/* 기획안 확정 */}
