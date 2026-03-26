@@ -56,7 +56,7 @@ export async function POST(
     async start(controller) {
       try {
         let fullContent = ''
-        for await (const chunk of streamWithGemini(systemPrompt, userPrompt, undefined, usage)) {
+        for await (const chunk of streamWithGemini(systemPrompt, userPrompt, { maxTokens: 32768 }, usage)) {
           fullContent += chunk
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`)
