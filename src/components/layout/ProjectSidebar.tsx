@@ -54,27 +54,32 @@ export default function ProjectSidebar({ project, mobileOpen = false, onMobileCl
     router.refresh()
   }
 
-  const sidebarContent = (
+  const renderContent = (isMobile: boolean) => {
+    const c = !isMobile && collapsed
+
+    return (
       <div className="flex flex-col h-full py-8 justify-between">
         {/* Branding */}
-        <div className={`flex flex-col gap-6 ${collapsed ? 'px-4 items-center' : 'px-6'}`}>
-          <div className={`flex items-center ${collapsed ? 'flex-col gap-4' : 'justify-between'}`}>
-            <Link href="/dashboard" className="flex items-center gap-3">
+        <div className={`flex flex-col gap-6 ${c ? 'px-4 items-center' : 'px-6'}`}>
+          <div className={`flex items-center ${c ? 'flex-col gap-4' : 'justify-between'}`}>
+            <Link href="/dashboard" className="flex items-center gap-3" onClick={isMobile ? onMobileClose : undefined}>
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-container to-secondary flex items-center justify-center flex-shrink-0">
                 <span className="material-symbols-outlined text-white text-base" style={{ fontVariationSettings: "'FILL' 1" }}>token</span>
               </div>
-              {!collapsed && (
+              {!c && (
                 <h1 className="text-xl font-bold bg-gradient-to-br from-primary-container to-secondary bg-clip-text text-transparent tracking-tight">
                   Servora
                 </h1>
               )}
             </Link>
             <button
-              onClick={() => { if (onMobileClose) onMobileClose(); else setCollapsed(!collapsed); }}
+              onClick={() => {
+                if (isMobile) { onMobileClose?.() } else { setCollapsed(!collapsed) }
+              }}
               className="text-on-surface-variant hover:text-secondary transition-colors p-1 rounded-md hover:bg-surface-container-high"
             >
               <span className="material-symbols-outlined">
-                {collapsed ? 'menu' : 'menu_open'}
+                {isMobile ? 'close' : c ? 'menu' : 'menu_open'}
               </span>
             </button>
           </div>
@@ -84,29 +89,30 @@ export default function ProjectSidebar({ project, mobileOpen = false, onMobileCl
         <div className="flex-1 mt-10 space-y-8 overflow-y-auto custom-scrollbar">
           {/* Console */}
           <nav className="space-y-1">
-            {!collapsed && (
+            {!c && (
               <div className="px-6 mb-2">
                 <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-outline">Console</span>
               </div>
             )}
             <Link
               href="/dashboard"
-              className={`flex items-center gap-4 py-2.5 px-6 transition-all duration-200 text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50 ${collapsed ? 'justify-center px-0' : ''}`}
+              onClick={isMobile ? onMobileClose : undefined}
+              className={`flex items-center gap-4 py-2.5 px-6 transition-all duration-200 text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50 ${c ? 'justify-center px-0' : ''}`}
             >
               <span className="material-symbols-outlined text-[20px]">dashboard</span>
-              {!collapsed && <span className="text-sm font-medium tracking-tight">Dashboard</span>}
+              {!c && <span className="text-sm font-medium tracking-tight">Dashboard</span>}
             </Link>
             {project && (
-              <div className={`flex items-center gap-4 py-2.5 px-6 bg-primary-container/20 text-white border-l-2 border-secondary ${collapsed ? 'justify-center px-0' : ''}`}>
+              <div className={`flex items-center gap-4 py-2.5 px-6 bg-primary-container/20 text-white border-l-2 border-secondary ${c ? 'justify-center px-0' : ''}`}>
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>account_tree</span>
-                {!collapsed && <span className="text-sm font-bold tracking-tight truncate">{project.title}</span>}
+                {!c && <span className="text-sm font-bold tracking-tight truncate">{project.title}</span>}
               </div>
             )}
           </nav>
 
           {/* Service Tools */}
           <nav className="space-y-1">
-            {!collapsed && (
+            {!c && (
               <div className="px-6 mb-2">
                 <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-outline">Service Tools</span>
               </div>
@@ -119,9 +125,9 @@ export default function ProjectSidebar({ project, mobileOpen = false, onMobileCl
 
               if (!isAccessible) {
                 return (
-                  <div key={step.key} className={`flex items-center gap-4 text-on-surface-variant py-2.5 px-6 opacity-30 cursor-not-allowed ${collapsed ? 'justify-center px-0' : ''}`}>
+                  <div key={step.key} className={`flex items-center gap-4 text-on-surface-variant py-2.5 px-6 opacity-30 cursor-not-allowed ${c ? 'justify-center px-0' : ''}`}>
                     <span className="material-symbols-outlined text-[20px]">{step.icon}</span>
-                    {!collapsed && <span className="text-sm font-medium">{step.label}</span>}
+                    {!c && <span className="text-sm font-medium">{step.label}</span>}
                   </div>
                 )
               }
@@ -130,11 +136,12 @@ export default function ProjectSidebar({ project, mobileOpen = false, onMobileCl
                 <Link
                   key={step.key}
                   href={`/projects/${project.id}/${step.path}`}
+                  onClick={isMobile ? onMobileClose : undefined}
                   className={`flex items-center gap-4 py-2.5 px-6 transition-all duration-200 ${
                     isActive
                       ? 'bg-primary-container/20 text-white border-l-2 border-secondary'
                       : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
-                  } ${collapsed ? 'justify-center px-0' : ''}`}
+                  } ${c ? 'justify-center px-0' : ''}`}
                 >
                   <span
                     className="material-symbols-outlined text-[20px]"
@@ -142,33 +149,33 @@ export default function ProjectSidebar({ project, mobileOpen = false, onMobileCl
                   >
                     {step.icon}
                   </span>
-                  {!collapsed && (
+                  {!c && (
                     <span className={`text-sm tracking-tight ${isActive ? 'font-bold' : 'font-medium'}`}>
                       {step.label}
                     </span>
                   )}
-                  {!collapsed && state === 'completed' && (
+                  {!c && state === 'completed' && (
                     <span className="ml-auto text-[9px] font-bold text-secondary uppercase tracking-widest">Done</span>
                   )}
                 </Link>
               )
             })}
             {/* Locked future items */}
-            <div className={`flex items-center justify-between py-2.5 px-6 opacity-40 cursor-not-allowed ${collapsed ? 'justify-center px-0' : ''}`}>
+            <div className={`flex items-center justify-between py-2.5 px-6 opacity-40 cursor-not-allowed ${c ? 'justify-center px-0' : ''}`}>
               <div className="flex items-center gap-4">
                 <span className="material-symbols-outlined text-[20px]">layers</span>
-                {!collapsed && <span className="text-sm font-medium">Service</span>}
+                {!c && <span className="text-sm font-medium">Service</span>}
               </div>
-              {!collapsed && (
+              {!c && (
                 <span className="text-[9px] bg-surface-container-highest text-on-surface px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Soon</span>
               )}
             </div>
-            <div className={`flex items-center justify-between py-2.5 px-6 opacity-40 cursor-not-allowed ${collapsed ? 'justify-center px-0' : ''}`}>
+            <div className={`flex items-center justify-between py-2.5 px-6 opacity-40 cursor-not-allowed ${c ? 'justify-center px-0' : ''}`}>
               <div className="flex items-center gap-4">
                 <span className="material-symbols-outlined text-[20px]">settings_applications</span>
-                {!collapsed && <span className="text-sm font-medium">Operation</span>}
+                {!c && <span className="text-sm font-medium">Operation</span>}
               </div>
-              {!collapsed && (
+              {!c && (
                 <span className="text-[9px] bg-surface-container-highest text-on-surface px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Soon</span>
               )}
             </div>
@@ -178,15 +185,15 @@ export default function ProjectSidebar({ project, mobileOpen = false, onMobileCl
         {/* Bottom: User */}
         <div className="mt-auto space-y-1 relative">
           <div
-            className={`mt-4 pt-4 border-t border-outline-variant/10 relative ${collapsed ? 'px-4' : 'px-6'}`}
+            className={`mt-4 pt-4 border-t border-outline-variant/10 relative ${c ? 'px-4' : 'px-6'}`}
             onMouseEnter={() => setShowUserPopup(true)}
             onMouseLeave={() => setShowUserPopup(false)}
           >
-            <div className={`flex items-center gap-3 p-2 rounded-xl hover:bg-surface-container-high transition-colors cursor-pointer ${collapsed ? 'justify-center' : ''}`}>
+            <div className={`flex items-center gap-3 p-2 rounded-xl hover:bg-surface-container-high transition-colors cursor-pointer ${c ? 'justify-center' : ''}`}>
               <div className="relative w-9 h-9 rounded-full overflow-hidden border border-primary-container/20 hover:border-primary-container/50 transition-colors flex-shrink-0 bg-surface-container-highest flex items-center justify-center">
                 <span className="material-symbols-outlined text-on-surface-variant text-lg">person</span>
               </div>
-              {!collapsed && (
+              {!c && (
                 <div className="flex flex-col overflow-hidden">
                   <span className="text-xs font-bold truncate text-on-surface">{userName}</span>
                   <span className="text-[10px] text-on-surface-variant truncate">{userEmail}</span>
@@ -212,7 +219,8 @@ export default function ProjectSidebar({ project, mobileOpen = false, onMobileCl
           </div>
         </div>
       </div>
-  )
+    )
+  }
 
   return (
     <>
@@ -223,7 +231,7 @@ export default function ProjectSidebar({ project, mobileOpen = false, onMobileCl
         }`}
         style={{ transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
       >
-        {sidebarContent}
+        {renderContent(false)}
       </aside>
 
       {/* Mobile overlay */}
@@ -231,7 +239,7 @@ export default function ProjectSidebar({ project, mobileOpen = false, onMobileCl
         <>
           <div className="md:hidden fixed inset-0 bg-black/60 z-40" onClick={onMobileClose} />
           <aside className="md:hidden fixed left-0 top-0 w-72 h-screen flex flex-col glass-sidebar z-50 shadow-[20px_0_40px_-5px_rgba(0,0,0,0.4)]">
-            {sidebarContent}
+            {renderContent(true)}
           </aside>
         </>
       )}
