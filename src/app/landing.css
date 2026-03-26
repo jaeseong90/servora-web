@@ -1,5 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
+/* Reset layout constraints from globals for landing page */
+html:has(.landing-page) { height: auto; }
+html:has(.landing-page) body { min-height: auto; display: block; }
+
 /* Landing page scoped styles */
 .landing-page {
   --p:   #7C3AED;

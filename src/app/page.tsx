@@ -3,7 +3,6 @@
 import { useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import Script from 'next/script'
-import LandingLocaleToggle from '@/components/landing/LandingLocaleToggle'
 import './landing.css'
 
 export default function Home() {
@@ -1288,10 +1287,7 @@ export default function Home() {
           <a href="#">Support</a>
           <a href="#">Pricing</a>
         </nav>
-        <div className="flex items-center gap-3">
-          <LandingLocaleToggle />
-          <Link href="/login" className="nav-sign">Sign in</Link>
-        </div>
+        <Link href="/login" className="nav-sign">Sign in</Link>
       </header>
 
       {/* HERO */}
