@@ -29,7 +29,7 @@ export async function generateWithGemini(
         system_instruction: { parts: [{ text: systemPrompt }] },
         contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
         generationConfig: {
-          maxOutputTokens: options?.maxTokens || 8192,
+          maxOutputTokens: options?.maxTokens || 16384,
           temperature: options?.temperature || 0.7,
         },
       }),
@@ -74,7 +74,7 @@ export async function* streamWithGemini(
         system_instruction: { parts: [{ text: systemPrompt }] },
         contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
         generationConfig: {
-          maxOutputTokens: options?.maxTokens || 8192,
+          maxOutputTokens: options?.maxTokens || 16384,
           temperature: 0.7,
         },
       }),
