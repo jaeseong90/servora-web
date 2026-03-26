@@ -1,5 +1,25 @@
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
 
+// API 키 라운드로빈 (429 rate limit 분산)
+function getApiKeys(): string[] {
+  const keys: string[] = []
+  if (process.env.GEMINI_API_KEY) keys.push(process.env.GEMINI_API_KEY)
+  for (let i = 2; i <= 10; i++) {
+    const k = process.env[`GEMINI_API_KEY_${i}`]
+    if (k) keys.push(k)
+  }
+  return keys
+}
+
+let keyIndex = 0
+function nextApiKey(): string {
+  const keys = getApiKeys()
+  if (keys.length === 0) throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.')
+  const key = keys[keyIndex % keys.length]
+  keyIndex++
+  return key
+}
+
 export interface TokenUsage {
   inputTokens: number
   outputTokens: number
@@ -17,8 +37,7 @@ export async function generateWithGemini(
   options?: { model?: string; maxTokens?: number; temperature?: number }
 ): Promise<GeminiResponse> {
   const model = options?.model || 'gemini-2.5-flash'
-  const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.')
+  const apiKey = nextApiKey()
 
   const response = await fetch(
     `${GEMINI_API_URL}/${model}:generateContent`,
@@ -62,8 +81,7 @@ export async function* streamWithGemini(
   usageTracker?: TokenUsage,
 ): AsyncGenerator<string> {
   const model = options?.model || 'gemini-2.5-flash'
-  const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.')
+  const apiKey = nextApiKey()
 
   const response = await fetch(
     `${GEMINI_API_URL}/${model}:streamGenerateContent?alt=sse`,
