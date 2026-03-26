@@ -57,6 +57,7 @@ export interface MvpBuildQueue {
   vercel_url: string | null
   error_message: string | null
   build_duration_ms: number | null
+  demo_accounts: { role: string; email: string; password: string }[] | null
   created_at: string
   completed_at: string | null
 }

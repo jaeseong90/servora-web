@@ -187,25 +187,67 @@ export default function MvpPage() {
 
           {/* 결과 */}
           {buildStatus.status === 'COMPLETED' && (
-            <div className="glass-card rounded-2xl p-6 border border-secondary/20 bg-secondary/5">
-              <h3 className="font-bold text-on-surface mb-3 flex items-center gap-2">
-                <span className="material-symbols-outlined text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                {t('mvp.deployComplete', locale)}
-              </h3>
-              {buildStatus.vercel_url && (
-                <div className="mb-3">
-                  <label className="block text-xs text-on-surface-variant mb-1">Vercel URL</label>
-                  <a
-                    href={buildStatus.vercel_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline text-sm break-all"
-                  >
-                    {buildStatus.vercel_url}
-                  </a>
+            <>
+              <div className="glass-card rounded-2xl p-6 border border-secondary/20 bg-secondary/5">
+                <h3 className="font-bold text-on-surface mb-3 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                  {t('mvp.deployComplete', locale)}
+                </h3>
+                {buildStatus.vercel_url && (
+                  <div className="mb-3">
+                    <label className="block text-xs text-on-surface-variant mb-1">Vercel URL</label>
+                    <a
+                      href={buildStatus.vercel_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline text-sm break-all"
+                    >
+                      {buildStatus.vercel_url}
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              {/* 데모 계정 */}
+              {buildStatus.demo_accounts && Array.isArray(buildStatus.demo_accounts) && buildStatus.demo_accounts.length > 0 && (
+                <div className="glass-card rounded-2xl p-6 border border-outline-variant/20">
+                  <h3 className="font-bold text-on-surface mb-4 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary">key</span>
+                    {locale === 'ko' ? '데모 계정' : 'Demo Accounts'}
+                  </h3>
+                  <div className="space-y-3">
+                    {(buildStatus.demo_accounts as { role: string; email: string; password: string }[]).map((account, idx) => (
+                      <div key={idx} className="flex items-center gap-4 p-3 bg-surface-container-lowest/50 rounded-xl border border-outline-variant/10">
+                        <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full ${
+                          account.role === 'admin'
+                            ? 'bg-primary/10 text-primary border border-primary/20'
+                            : 'bg-secondary/10 text-secondary border border-secondary/20'
+                        }`}>
+                          {account.role}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm text-on-surface font-medium">{account.email}</div>
+                        </div>
+                        <div className="text-sm text-on-surface-variant font-mono">{account.password}</div>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${account.email} / ${account.password}`)
+                            alert(locale === 'ko' ? '복사되었습니다' : 'Copied!')
+                          }}
+                          className="text-on-surface-variant hover:text-primary transition-colors"
+                          aria-label="Copy"
+                        >
+                          <span className="material-symbols-outlined text-sm">content_copy</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-[11px] text-on-surface-variant/50">
+                    {locale === 'ko' ? '위 계정으로 생성된 MVP에 로그인할 수 있습니다.' : 'Use these accounts to log in to the generated MVP.'}
+                  </p>
                 </div>
               )}
-            </div>
+            </>
           )}
 
           {/* 에러 */}
