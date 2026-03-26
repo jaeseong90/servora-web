@@ -4,7 +4,7 @@ import type { TokenUsage } from '@/lib/ai/gemini'
 export type UsageAction =
   | 'planning_generate'
   | 'planning_feedback'
-  | 'planning_deep_dive'
+  | 'design_guidelines'
   | 'mvp_generate'
 
 export async function logTokenUsage(

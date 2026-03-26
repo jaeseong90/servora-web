@@ -75,7 +75,7 @@ export async function POST(
           .eq('project_id', projectId)
 
         // 토큰 사용량 기록
-        await logTokenUsage(supabase, user.id, projectId, 'planning_deep_dive', usage)
+        await logTokenUsage(supabase, user.id, projectId, 'design_guidelines', usage)
 
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ type: 'complete', version: currentVersion + 1 })}\n\n`)
