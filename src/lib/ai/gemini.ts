@@ -1,6 +1,6 @@
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
 
-// API 키 라운드로빈 (429 rate limit 분산)
+// API 키 라운드로빈 + 429 시 다음 키로 폴백
 function getApiKeys(): string[] {
   const keys: string[] = []
   if (process.env.GEMINI_API_KEY) keys.push(process.env.GEMINI_API_KEY)
@@ -31,48 +31,63 @@ interface GeminiResponse {
   outputTokens: number
 }
 
+function buildRequestBody(systemPrompt: string, userPrompt: string, maxTokens: number, temperature: number) {
+  return JSON.stringify({
+    system_instruction: { parts: [{ text: systemPrompt }] },
+    contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+    generationConfig: { maxOutputTokens: maxTokens, temperature },
+  })
+}
+
 export async function generateWithGemini(
   systemPrompt: string,
   userPrompt: string,
   options?: { model?: string; maxTokens?: number; temperature?: number }
 ): Promise<GeminiResponse> {
   const model = options?.model || 'gemini-2.5-flash'
-  const apiKey = nextApiKey()
+  const maxTokens = options?.maxTokens || 16384
+  const temperature = options?.temperature || 0.7
+  const keys = getApiKeys()
+  const body = buildRequestBody(systemPrompt, userPrompt, maxTokens, temperature)
 
-  const response = await fetch(
-    `${GEMINI_API_URL}/${model}:generateContent`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-        generationConfig: {
-          maxOutputTokens: options?.maxTokens || 16384,
-          temperature: options?.temperature || 0.7,
-        },
-      }),
+  // 모든 키를 순회하며 시도
+  for (let attempt = 0; attempt < keys.length; attempt++) {
+    const apiKey = nextApiKey()
+    const response = await fetch(
+      `${GEMINI_API_URL}/${model}:generateContent`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        body,
+      }
+    )
+
+    if (response.status === 429 && attempt < keys.length - 1) {
+      continue // 다음 키로 재시도
     }
-  )
 
-  if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`Gemini API 오류 (${response.status}): ${error}`)
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Gemini API 오류 (${response.status}): ${error}`)
+    }
+
+    const data = await response.json()
+    const content = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    const usage = data.usageMetadata || {}
+
+    return {
+      content,
+      inputTokens: usage.promptTokenCount || 0,
+      outputTokens: usage.candidatesTokenCount || 0,
+    }
   }
 
-  const data = await response.json()
-  const content = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-  const usage = data.usageMetadata || {}
-
-  return {
-    content,
-    inputTokens: usage.promptTokenCount || 0,
-    outputTokens: usage.candidatesTokenCount || 0,
-  }
+  throw new Error('모든 Gemini API 키의 할당량이 소진되었습니다.')
 }
 
 /**
  * SSE 스트리밍 생성 (기획안 생성용)
+ * 429 시 다음 키로 자동 폴백
  */
 export async function* streamWithGemini(
   systemPrompt: string,
@@ -81,25 +96,35 @@ export async function* streamWithGemini(
   usageTracker?: TokenUsage,
 ): AsyncGenerator<string> {
   const model = options?.model || 'gemini-2.5-flash'
-  const apiKey = nextApiKey()
+  const maxTokens = options?.maxTokens || 16384
+  const keys = getApiKeys()
+  const body = buildRequestBody(systemPrompt, userPrompt, maxTokens, 0.7)
 
-  const response = await fetch(
-    `${GEMINI_API_URL}/${model}:streamGenerateContent?alt=sse`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-        generationConfig: {
-          maxOutputTokens: options?.maxTokens || 16384,
-          temperature: 0.7,
-        },
-      }),
+  let response: Response | null = null
+
+  // 모든 키를 순회하며 시도
+  for (let attempt = 0; attempt < keys.length; attempt++) {
+    const apiKey = nextApiKey()
+    const r = await fetch(
+      `${GEMINI_API_URL}/${model}:streamGenerateContent?alt=sse`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        body,
+      }
+    )
+
+    if (r.status === 429 && attempt < keys.length - 1) {
+      continue // 다음 키로 재시도
     }
-  )
 
-  if (!response.ok) throw new Error(`Gemini 스트리밍 실패: ${response.status}`)
+    if (!r.ok) throw new Error(`Gemini 스트리밍 실패: ${r.status}`)
+
+    response = r
+    break
+  }
+
+  if (!response) throw new Error('모든 Gemini API 키의 할당량이 소진되었습니다.')
 
   const reader = response.body?.getReader()
   if (!reader) throw new Error('스트림을 읽을 수 없습니다.')
@@ -109,7 +134,6 @@ export async function* streamWithGemini(
     const { done, value } = await reader.read()
     if (done) break
     const chunk = decoder.decode(value, { stream: true })
-    // SSE 파싱
     for (const line of chunk.split('\n')) {
       if (line.startsWith('data: ')) {
         try {
