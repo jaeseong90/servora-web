@@ -6,7 +6,7 @@ import { logTokenUsage, type UsageAction } from '@/lib/usage/log-usage'
 interface StreamingOptions {
   supabase: SupabaseClient
   userId: string
-  projectId: string
+  projectId: string | number
   systemPrompt: string
   userPrompt: string
   action: UsageAction

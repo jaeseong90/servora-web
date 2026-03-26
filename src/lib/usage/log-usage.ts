@@ -10,7 +10,7 @@ export type UsageAction =
 export async function logTokenUsage(
   supabase: SupabaseClient,
   userId: string,
-  projectId: string,
+  projectId: string | number,
   action: UsageAction,
   usage: TokenUsage,
   model: string = 'gemini-2.5-flash',
@@ -19,7 +19,7 @@ export async function logTokenUsage(
 
   await supabase.from('api_usage_logs').insert({
     user_id: userId,
-    project_id: Number(projectId),
+    project_id: typeof projectId === 'number' ? projectId : Number(projectId),
     action,
     model,
     input_tokens: usage.inputTokens,

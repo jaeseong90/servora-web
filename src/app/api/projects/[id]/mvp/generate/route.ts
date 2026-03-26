@@ -4,12 +4,16 @@ import { generateWithGemini } from '@/lib/ai/gemini'
 import { loadPrompt } from '@/lib/prompts'
 import { logTokenUsage } from '@/lib/usage/log-usage'
 import { checkAiRateLimit } from '@/lib/ratelimit'
+import { parseProjectId } from '@/lib/utils/parse-project-id'
 
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: projectId } = await params
+  const { id: rawId } = await params
+  const projectId = parseProjectId(rawId)
+  if (!projectId) return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 })
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -83,7 +87,7 @@ export async function POST(
 
     // 큐에 등록
     const { error: insertError } = await supabase.from('mvp_build_queue').insert({
-      project_id: Number(projectId),
+      project_id: projectId,
       status: 'PENDING',
       spec_json: result.content,
     })

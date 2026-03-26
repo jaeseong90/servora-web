@@ -6,7 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  */
 export async function insertDocumentWithVersion(
   supabase: SupabaseClient,
-  projectId: string,
+  projectId: string | number,
   content: string,
   questionnaireData: Record<string, string> | null
 ): Promise<number> {
@@ -24,7 +24,7 @@ export async function insertDocumentWithVersion(
     const nextVersion = (latestDoc?.version || 0) + 1
 
     const { error } = await supabase.from('planning_documents').insert({
-      project_id: Number(projectId),
+      project_id: typeof projectId === 'number' ? projectId : Number(projectId),
       content,
       questionnaire_data: questionnaireData,
       version: nextVersion,

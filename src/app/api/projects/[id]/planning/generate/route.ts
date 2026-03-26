@@ -32,7 +32,10 @@ export async function POST(
   if (project.status !== 'PLANNING')
     return NextResponse.json({ error: '기획 단계에서만 생성할 수 있습니다.' }, { status: 400 })
 
-  const body = await request.json()
+  let body: unknown
+  try { body = await request.json() } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
   const parsed = questionnaireSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid input' }, { status: 400 })

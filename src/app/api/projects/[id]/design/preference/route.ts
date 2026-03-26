@@ -1,5 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { parseProjectId } from '@/lib/utils/parse-project-id'
+import { z } from 'zod'
+
+const designPreferenceSchema = z.object({
+  design_tone: z.string().max(50),
+  primary_color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  secondary_color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  color_mode: z.enum(['LIGHT', 'DARK']),
+  layout_style: z.enum(['SIDEBAR', 'TOP_NAV', 'MINIMAL']),
+  font_style: z.string().max(50),
+  corner_style: z.string().max(50),
+  finalize: z.boolean().optional(),
+})
 
 export async function GET(
   _request: NextRequest,
@@ -28,7 +41,10 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: projectId } = await params
+  const { id: rawId } = await params
+  const projectId = parseProjectId(rawId)
+  if (!projectId) return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 })
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -38,21 +54,22 @@ export async function POST(
   if (!project || project.user_id !== user.id)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const body = await request.json()
-  const { finalize, ...designData } = body
+  let body: unknown
+  try { body = await request.json() } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+  const parsed = designPreferenceSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid input' }, { status: 400 })
+  }
+  const { finalize, ...designData } = parsed.data
 
   // upsert
   const { error } = await supabase
     .from('design_preferences')
     .upsert({
-      project_id: Number(projectId),
-      design_tone: designData.design_tone,
-      primary_color: designData.primary_color,
-      secondary_color: designData.secondary_color,
-      color_mode: designData.color_mode,
-      layout_style: designData.layout_style,
-      font_style: designData.font_style,
-      corner_style: designData.corner_style,
+      project_id: projectId,
+      ...designData,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'project_id' })
 

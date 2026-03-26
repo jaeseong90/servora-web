@@ -20,7 +20,10 @@ export async function PUT(
   if (!project || project.user_id !== user.id)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const body = await request.json()
+  let body: unknown
+  try { body = await request.json() } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
   const parsed = guidelinesSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: '지침 내용이 필요합니다.' }, { status: 400 })
