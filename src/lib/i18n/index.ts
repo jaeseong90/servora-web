@@ -210,7 +210,7 @@ const translations: TranslationMap = {
   'mvp.pending': { ko: '대기 중', en: 'Pending' },
   'mvp.pendingDesc': { ko: 'MVP 생성 요청이 접수되었습니다. 순서가 오면 자동으로 시작됩니다.', en: 'Your MVP request has been queued. It will start automatically.' },
   'mvp.building': { ko: '빌드 중', en: 'Building' },
-  'mvp.buildingDesc': { ko: 'MVP를 만들고 있습니다. 보통 5~10분 정도 소요되며, 완료되면 알림을 보내드립니다.', en: 'Building your MVP. This usually takes 5-10 minutes. We\'ll notify you when it\'s ready.' },
+  'mvp.buildingDesc': { ko: 'MVP를 만들고 있습니다. 15분 이상 소요될 수 있으며, 완료되면 알림을 보내드립니다. 이 페이지를 떠나셔도 괜찮습니다.', en: 'Building your MVP. This may take 15+ minutes. We\'ll notify you when it\'s ready. Feel free to leave this page.' },
   'mvp.completed': { ko: '완료', en: 'Completed' },
   'mvp.completedDesc': { ko: 'MVP가 성공적으로 생성되었습니다!', en: 'MVP has been successfully generated!' },
   'mvp.failed': { ko: '실패', en: 'Failed' },
