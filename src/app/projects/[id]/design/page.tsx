@@ -499,7 +499,7 @@ export default function DesignPage() {
                     value={editingGuidelines}
                     onChange={(e) => setEditingGuidelines(e.target.value)}
                     rows={20}
-                    maxLength={200000}
+                    maxLength={50000}
                     className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant/20 rounded-xl focus:ring-2 focus:ring-primary/40 focus:border-transparent outline-none resize-y text-sm text-on-surface font-mono placeholder:text-on-surface-variant/40"
                     placeholder="마크다운으로 작성..."
                   />

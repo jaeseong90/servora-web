@@ -12,7 +12,6 @@ export default function LandingLocaleToggle() {
   const switchLocale = (l: Locale) => {
     setLocale(l)
     setLocaleState(l)
-    window.location.reload()
   }
 
   return (

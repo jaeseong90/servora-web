@@ -1284,11 +1284,11 @@ export default function Home() {
         <Link href="/" className="nav-logo">
           <img src="/img/favicon-32x32.png" className="nav-icon" alt="" />Servora
         </Link>
-        <nav className="nav-links">
-          <a href="#">Support</a>
-          <a href="#">Pricing</a>
-        </nav>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4 ml-auto">
+          <nav className="nav-links">
+            <a href="#">Support</a>
+            <a href="#">Pricing</a>
+          </nav>
           <LandingLocaleToggle />
           <Link href="/login" className="nav-sign">Sign in</Link>
         </div>

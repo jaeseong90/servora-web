@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 
 const guidelinesSchema = z.object({
-  mvp_guidelines: z.string().min(1).max(200000),
+  mvp_guidelines: z.string().min(1).max(50000),
 })
 
 export async function PUT(
