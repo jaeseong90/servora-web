@@ -23,5 +23,17 @@ export async function GET(
     .limit(1)
     .single()
 
+  // MVP 빌드 완료 시 프로젝트 상태를 COMPLETED로 업데이트
+  if (build?.status === 'COMPLETED') {
+    const { data: proj } = await supabase
+      .from('projects').select('status').eq('id', projectId).single()
+    if (proj?.status === 'MVP') {
+      await supabase
+        .from('projects')
+        .update({ status: 'COMPLETED', updated_at: new Date().toISOString() })
+        .eq('id', projectId)
+    }
+  }
+
   return NextResponse.json({ build })
 }
