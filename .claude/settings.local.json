@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp -r src/lib/prompts /tmp/servora-prompts-backup)",
+      "Bash(cp claude-code-servora-web-init.md /tmp/)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --app --src-dir --use-npm --eslint)",
+      "Bash(cd:*)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --app --src-dir --use-npm --eslint --no-turbopack --import-alias \"@/*\")",
+      "Bash(rm -rf .next node_modules package.json package-lock.json tsconfig.json next.config.ts next-env.d.ts src .gitignore eslint.config.mjs postcss.config.mjs tailwind.config.ts AGENTS.md)",
+      "Bash(printf nnnn:*)",
+      "Bash(yes n:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(code .)",
+      "Bash(npx next:*)",
+      "Bash(find C:/workspace/myProject/Servora/src -name planning* -o -name Planning*)",
+      "Bash(xargs grep:*)",
+      "Bash(find C:/workspace/myProject/servora-web/node_modules/next/dist/docs/ -name *font* -o -name *optimizing*)",
+      "Bash(find C:/workspace/myProject/servora-web/node_modules/next/dist/docs/01-app/ -name *.md)",
+      "Bash(find C:/workspace/myProject/servora-web/node_modules/next/dist/docs/ -name *.md)",
+      "Bash(ls:*)",
+      "Bash(npx eslint:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "Bash(tasklist)",
+      "Bash(node -e \":*)",
+      "Bash(grep -r \"status\\\\|Status\\\\|recovery\\\\|recover\\\\|Resume\\\\|resume\\\\|retry\\\\|Retry\" /c/workspace/myProject/servora-web/src/app/projects/[id]/design/page.tsx --include=\"*.tsx\" -n)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(taskkill /PID 26592 /F)",
+      "Bash(taskkill:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
+    ]
+  }
+}

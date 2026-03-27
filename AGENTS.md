@@ -16,12 +16,24 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## 주요 흐름
 ```
-Planning (기획안 생성/피드백) → Design (선호도 + MVP 지침 생성) → MVP (코드 생성)
+Planning (기획안 생성/피드백)
+    → Design (선호도 + MVP 지침 생성)
+    → MVP (JSON 스펙 추출 → 사용자 리뷰 → 결정적 빌드 → 배포)
+```
+
+## MVP 빌드 파이프라인 (v2)
+```
+기획안 + MVP 지침 → Gemini JSON 스펙 추출 → SPEC_REVIEW
+    → 사용자 리뷰/수정 → 확정 → PENDING
+    → 데몬: 결정적 빌드 (JSON → app-config.ts + SQL, AI 불필요)
+    → npm run build (1차) → 성공 시 Claude Code 생략
+    → 실패 시 Claude Code 에러 수정 (max-turns=10)
+    → GitHub push → Vercel 배포 → COMPLETED
 ```
 
 ## 디렉토리 구조
 - `src/app/` — 페이지 및 API routes
-- `src/components/planning/` — Planning 페이지 컴포넌트 (QuestionnaireForm, PlanViewer, FeedbackPanel, PptStatusButton, VersionHistory)
+- `src/components/planning/` — Planning 페이지 컴포넌트
 - `src/components/layout/` — Sidebar, ProjectSidebar
 - `src/components/landing/` — LandingLocaleToggle
 - `src/lib/ai/gemini.ts` — Gemini API (일반 생성 + SSE 스트리밍)
@@ -31,7 +43,7 @@ Planning (기획안 생성/피드백) → Design (선호도 + MVP 지침 생성)
 - `src/lib/prompts/` — AI 시스템 프롬프트 (.txt)
 - `src/lib/supabase/` — client, server, admin
 - `src/lib/i18n/` — 한국어/영어 다국어
-- `src/proxy.ts` — 인증 미들웨어 + CSRF 방어 (Next.js 16의 middleware → proxy 전환)
+- `src/proxy.ts` — 인증 미들웨어 + CSRF 방어
 - `supabase/migrations/` — DB 마이그레이션 SQL
 
 ## 코딩 규칙
@@ -39,5 +51,6 @@ Planning (기획안 생성/피드백) → Design (선호도 + MVP 지침 생성)
 - dangerouslySetInnerHTML 사용 시 DOMPurify.sanitize() 필수
 - Gemini API 키는 x-goog-api-key 헤더로 전달 (URL 쿼리스트링 금지)
 - 프로젝트 상태 전이 검증 (PLANNING → DESIGN → MVP → COMPLETED)
+- MVP 빌드 상태 전이: SPEC_REVIEW → PENDING → BUILDING → COMPLETED/FAILED
 - 클라이언트에서 Supabase 직접 INSERT/UPDATE 금지 → API route 경유
 - Next.js 16: middleware 대신 proxy.ts 사용

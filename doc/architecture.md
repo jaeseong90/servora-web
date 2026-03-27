@@ -41,12 +41,31 @@
     ▼
 디자인 단계 (DESIGN)
     │         → 톤/색상/레이아웃/폰트/모서리 설정
+    │         → MVP 구현 지침 AI 생성 (Gemini SSE)
     │         → 저장 (수정 가능) / 확정 후 MVP 이동
     ▼
-MVP 단계 (MVP)
-    │         → MVP 스펙 추출 (Gemini)
-    │         → 빌드 큐 등록 → 데몬이 빌드
-    │         → GitHub 리포 + Vercel 배포
+MVP 단계 (MVP) — v2 3단계 파이프라인
+    │
+    │  [Phase 2.5: 스펙 추출]
+    │         → Gemini로 JSON 스펙 추출 (entities, screens, roles)
+    │         → SPEC_REVIEW 상태로 큐 등록
+    │         → 사용자 스펙 리뷰/수정 (시각적 보기 + JSON 편집)
+    │         → 스펙 확정 → PENDING 전환
+    │
+    │  [Phase 3: 결정적 빌드] (데몬)
+    │         → 템플릿 clone
+    │         → JSON 스펙 → app-config.ts (순수 변환, AI 불필요)
+    │         → JSON 스펙 → SQL 마이그레이션 (순수 변환)
+    │         → npm run build (1차 시도)
+    │
+    │  [Phase 3.5: AI 폴리싱] (빌드 실패 시에만)
+    │         → Claude Code CLI로 에러 수정 + 커스텀 페이지 추가
+    │         → npm run build (2차 시도)
+    │
+    │  [배포]
+    │         → DB 마이그레이션 실행
+    │         → GitHub push → Vercel 배포
+    │         → 이메일 알림
     ▼
 완료 (COMPLETED)
 ```
@@ -58,15 +77,18 @@ src/
 ├── app/                          # Next.js App Router
 │   ├── api/projects/[id]/        # API 라우트
 │   │   ├── planning/             #   기획 (generate, feedback, deep-dive, finalize)
-│   │   ├── design/preference/    #   디자인 선호도 (GET/POST)
-│   │   └── mvp/                  #   MVP (generate, status)
+│   │   ├── design/               #   디자인 (preference, generate-guidelines, guidelines)
+│   │   └── mvp/                  #   MVP
+│   │       ├── generate/         #     스펙 추출 + 큐 등록 (POST)
+│   │       ├── spec/             #     스펙 조회/수정/확정 (GET/PUT/POST)
+│   │       └── status/           #     빌드 상태 조회 (GET)
 │   ├── dashboard/                # 대시보드 (프로젝트 목록)
 │   ├── login/                    # 로그인
 │   ├── signup/                   # 회원가입
 │   └── projects/[id]/            # 프로젝트 상세
 │       ├── planning/             #   기획 페이지
 │       ├── design/               #   디자인 페이지
-│       ├── mvp/                  #   MVP 페이지
+│       ├── mvp/                  #   MVP 페이지 (스펙 리뷰 + 빌드 상태)
 │       └── layout.tsx            #   프로젝트 레이아웃 (사이드바)
 ├── components/layout/            # 공통 레이아웃 컴포넌트
 │   ├── Sidebar.tsx               #   메인 사이드바
@@ -77,8 +99,8 @@ src/
 │   ├── prompts/                  # AI 프롬프트 파일
 │   │   ├── planner-system.txt    #   기획안 생성
 │   │   ├── plan-refiner-system.txt    # 피드백 반영
-│   │   ├── plan-deep-diver-system.txt # 딥다이브
-│   │   └── mvp-spec-extractor-system.txt # MVP 스펙 추출
+│   │   ├── mvp-guidelines-system.txt  # MVP 구현 지침
+│   │   └── mvp-spec-extractor-system.txt # MVP JSON 스펙 추출
 │   └── supabase/                 # Supabase 클라이언트
 │       ├── client.ts             #   브라우저용
 │       ├── server.ts             #   서버용 (SSR)
@@ -93,10 +115,11 @@ src/
 | `projects` | 프로젝트 | user_id, title, status (PLANNING/DESIGN/MVP/COMPLETED) |
 | `planning_documents` | 기획 문서 | project_id, content, questionnaire_data, version, is_finalized |
 | `planning_feedbacks` | 기획 피드백 | document_id, project_id, content |
-| `design_preferences` | 디자인 설정 | project_id (UNIQUE), tone/color/layout/font/corner |
-| `mvp_build_queue` | MVP 빌드 큐 | project_id, status, spec_json, github_repo, vercel_url |
+| `design_preferences` | 디자인 설정 | project_id (UNIQUE), tone/color/layout/font/corner, mvp_guidelines, guidelines_status |
+| `mvp_build_queue` | MVP 빌드 큐 | project_id, status (SPEC_REVIEW/PENDING/BUILDING/COMPLETED/FAILED), spec_json, github_repo, vercel_url |
 | `mvp_projects` | MVP 결과 | project_id, spec_json, github_repo, vercel_url, version |
 | `ppt_build_queue` | PPT 빌드 큐 | project_id, document_id, status, slide_json, output_url, 토큰 사용량 |
+| `api_usage_logs` | API 사용량 | user_id, project_id, action, model, input_tokens, output_tokens |
 
 - 모든 테이블에 RLS(Row Level Security) 적용
 - 사용자는 자신의 프로젝트 데이터만 접근 가능
@@ -109,17 +132,25 @@ src/
 | `/api/projects/[id]/planning/feedback` | POST | 피드백 반영 (새 버전, 스트리밍) |
 | `/api/projects/[id]/planning/deep-dive` | POST | 딥다이브 보강 (새 버전, 스트리밍) |
 | `/api/projects/[id]/planning/finalize` | POST | 기획안 확정 → 상태 DESIGN |
-| `/api/projects/[id]/design/preference` | GET | 디자인 선호도 조회 |
-| `/api/projects/[id]/design/preference` | POST | 디자인 선호도 저장 (finalize 플래그로 MVP 전환) |
-| `/api/projects/[id]/mvp/generate` | POST | MVP 스펙 추출 + 빌드 큐 등록 (중복 방지) |
+| `/api/projects/[id]/design/preference` | GET/POST | 디자인 선호도 조회/저장 |
+| `/api/projects/[id]/design/generate-guidelines` | POST | MVP 구현 지침 생성 (SSE) |
+| `/api/projects/[id]/design/guidelines` | PUT | MVP 구현 지침 수동 수정 |
+| `/api/projects/[id]/mvp/generate` | POST | **JSON 스펙 추출 (Gemini) + SPEC_REVIEW 큐 등록** |
+| `/api/projects/[id]/mvp/spec` | GET | **스펙 조회** |
+| `/api/projects/[id]/mvp/spec` | PUT | **스펙 수정 (SPEC_REVIEW 상태에서만)** |
+| `/api/projects/[id]/mvp/spec` | POST | **스펙 확정 → PENDING 전환 (빌드 시작)** |
 | `/api/projects/[id]/mvp/status` | GET | MVP 빌드 상태 조회 |
 
-## 비동기 처리 (데몬)
+## 비동기 처리 (데몬) — v2 빌드 파이프라인
 
-MVP 빌드와 PPT 빌드는 큐 기반 비동기 처리:
+MVP 빌드는 큐 기반 비동기 처리:
 
-1. 웹에서 큐 테이블에 `PENDING` 레코드 삽입
-2. 별도 데몬이 큐를 폴링하여 처리
-3. 상태: `PENDING → BUILDING → COMPLETED / FAILED`
-4. 프론트에서 5초 간격 폴링으로 상태 감지
-5. 완료/실패 시 브라우저 Notification API로 알림
+1. 웹에서 Gemini로 JSON 스펙 추출 → `SPEC_REVIEW` 상태로 큐 등록
+2. 사용자가 스펙 리뷰/수정 후 확정 → `PENDING` 전환
+3. 데몬이 `PENDING` 폴링 → `BUILDING`
+4. **결정적 빌드**: JSON 스펙 → app-config.ts + SQL 마이그레이션 (AI 불필요)
+5. npm run build 1차 시도 → 성공 시 Claude Code 생략
+6. 1차 실패 시에만 Claude Code CLI 실행 (에러 수정, max-turns=10)
+7. DB 마이그레이션 → GitHub push → Vercel 배포
+8. 프론트에서 Realtime 구독으로 상태 감지
+9. 완료/실패 시 브라우저 Notification + 이메일 알림

@@ -51,7 +51,7 @@ export interface DesignPreference {
 export interface MvpBuildQueue {
   id: number
   project_id: number
-  status: 'PENDING' | 'BUILDING' | 'COMPLETED' | 'FAILED'
+  status: 'SPEC_REVIEW' | 'PENDING' | 'BUILDING' | 'COMPLETED' | 'FAILED'
   spec_json: string | null
   github_repo: string | null
   vercel_url: string | null
