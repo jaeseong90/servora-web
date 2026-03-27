@@ -17,41 +17,48 @@ export default function VersionHistory({
   onSelect,
 }: VersionHistoryProps) {
   return (
-    <div className="hidden lg:block">
-      <div className="glass-card rounded-2xl p-5 border border-outline-variant/20 sticky top-8">
-        <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-4">
-          {locale === 'ko' ? '버전 히스토리' : 'Version History'}
-        </h3>
-        <div className="space-y-1.5 max-h-[60vh] overflow-y-auto custom-scrollbar">
-          {documents.map((doc) => {
-            const isActive = activeDocId === doc.id
-            return (
-              <button
-                key={doc.id}
-                onClick={() => onSelect(doc)}
-                className={`w-full text-left px-3 py-2.5 rounded-xl transition-colors ${
-                  isActive
-                    ? 'bg-primary-container/15 border border-primary-container/20'
-                    : 'hover:bg-surface-container-high/50 border border-transparent'
-                }`}
-              >
+    <div className="relative">
+      {/* Vertical line */}
+      <div className="absolute left-[15px] top-2 bottom-4 w-[1px] bg-outline-variant/20" />
+
+      <div className="max-h-[264px] overflow-y-auto no-scrollbar space-y-0">
+        {documents.map((doc) => {
+          const isActive = activeDocId === doc.id
+          return (
+            <div
+              key={doc.id}
+              onClick={() => onSelect(doc)}
+              className={`relative pl-10 py-4 cursor-pointer transition-colors rounded-r-lg ${
+                isActive
+                  ? 'version-item-active bg-primary/5'
+                  : 'hover:bg-white/5'
+              }`}
+            >
+              <div className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
-                  <span className={`text-sm font-bold ${isActive ? 'text-on-surface' : 'text-on-surface-variant'}`}>
+                  <p className={`text-sm font-bold ${isActive ? 'text-primary' : 'text-on-surface-variant'}`}>
                     v{doc.version}
-                  </span>
-                  {doc.is_finalized && (
-                    <span className="text-[9px] font-bold text-secondary uppercase">Finalized</span>
+                  </p>
+                  {isActive && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-primary/20 text-primary rounded mr-2">
+                      CURRENT
+                    </span>
+                  )}
+                  {doc.is_finalized && !isActive && (
+                    <span className="text-[9px] font-bold text-secondary uppercase mr-2">
+                      {locale === 'ko' ? '확정' : 'Finalized'}
+                    </span>
                   )}
                 </div>
-                <span className="text-[11px] text-on-surface-variant">
+                <p className="text-[10px] text-outline mt-1 font-mono">
                   {new Date(doc.created_at).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US', {
                     month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                   })}
-                </span>
-              </button>
-            )
-          })}
-        </div>
+                </p>
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

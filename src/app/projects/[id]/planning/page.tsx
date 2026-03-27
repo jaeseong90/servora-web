@@ -8,7 +8,11 @@ import type { Project, PlanningDocument } from '@/types'
 import QuestionnaireForm from '@/components/planning/QuestionnaireForm'
 import PlanViewer from '@/components/planning/PlanViewer'
 import FeedbackPanel from '@/components/planning/FeedbackPanel'
+import SectionDeepDive from '@/components/planning/SectionDeepDive'
 import VersionHistory from '@/components/planning/VersionHistory'
+import PptStatusButton from '@/components/planning/PptStatusButton'
+import GenerationOverlay from '@/components/planning/GenerationOverlay'
+import PlanningStepIndicator from '@/components/planning/PlanningStepIndicator'
 
 export default function PlanningPage() {
   const params = useParams()
@@ -27,8 +31,15 @@ export default function PlanningPage() {
   const [errorMsg, setErrorMsg] = useState('')
   const [pptRequesting, setPptRequesting] = useState(false)
   const [pptStatus, setPptStatus] = useState<string | null>(null)
+  const [pptLoading, setPptLoading] = useState(false)
   const [pptOutputUrl, setPptOutputUrl] = useState<string | null>(null)
   const [initialLoading, setInitialLoading] = useState(true)
+  const [showOverlay, setShowOverlay] = useState(false)
+  const [overlayComplete, setOverlayComplete] = useState(false)
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null)
+  const [toastMsg, setToastMsg] = useState<string | null>(null)
+  const [isSuggesting, setIsSuggesting] = useState(false)
+  const [suggestingKeys, setSuggestingKeys] = useState<Set<string>>(new Set())
   const contentRef = useRef<HTMLDivElement>(null)
 
   // --- Data fetching ---
@@ -58,6 +69,19 @@ export default function PlanningPage() {
         if (docs[0].questionnaire_data) {
           setQuestionnaire(docs[0].questionnaire_data as Record<string, string>)
         }
+      } else {
+        // 기존 문서가 없으면 localStorage 임시 저장 데이터 복원
+        try {
+          const draftKey = `planning_draft_${projectId}`
+          const saved = localStorage.getItem(draftKey)
+          if (saved) {
+            const { questionnaire: savedQ, savedAt } = JSON.parse(saved)
+            if (savedQ && Object.values(savedQ as Record<string, string>).some(v => v.trim())) {
+              setQuestionnaire(savedQ)
+              setDraftSavedAt(savedAt || null)
+            }
+          }
+        } catch { /* localStorage parse error skip */ }
       }
       setInitialLoading(false)
     }
@@ -88,10 +112,11 @@ export default function PlanningPage() {
   // --- PPT Realtime subscription ---
 
   useEffect(() => {
-    if (!document) { setPptStatus(null); return }
+    if (!document) { setPptStatus(null); setPptLoading(false); return }
     const supabase = createClient()
 
     // 초기 상태 조회
+    setPptLoading(true)
     const fetchInitial = async () => {
       const { data } = await supabase
         .from('ppt_build_queue')
@@ -102,6 +127,7 @@ export default function PlanningPage() {
         .single()
       setPptStatus(data?.status || null)
       setPptOutputUrl(data?.output_url || null)
+      setPptLoading(false)
     }
     fetchInitial()
 
@@ -179,7 +205,83 @@ export default function PlanningPage() {
     }
   }
 
+  // --- Toast auto-hide ---
+
+  useEffect(() => {
+    if (!toastMsg) return
+    const timer = setTimeout(() => setToastMsg(null), 3000)
+    return () => clearTimeout(timer)
+  }, [toastMsg])
+
   // --- Handlers ---
+
+  const handleSuggestAll = async () => {
+    if (!questionnaire.q1?.trim()) return
+    setIsSuggesting(true)
+    setSuggestingKeys(new Set())
+    try {
+      const response = await fetch(`/api/projects/${projectId}/planning/suggest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionnaire, mode: 'all' }),
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => null)
+        setErrorMsg(data?.error || (locale === 'ko' ? 'AI 답변 생성에 실패했습니다.' : 'AI suggestion failed.'))
+        return
+      }
+      const { suggestions } = await response.json()
+      setQuestionnaire(prev => ({ ...prev, ...suggestions }))
+      setToastMsg(locale === 'ko' ? 'AI 답변이 생성되었습니다.' : 'AI suggestions generated.')
+    } catch {
+      setErrorMsg(locale === 'ko' ? 'AI 답변 생성 중 오류가 발생했습니다.' : 'Error generating AI suggestions.')
+    } finally {
+      setIsSuggesting(false)
+    }
+  }
+
+  const handleSuggestSingle = async (key: string) => {
+    if (!questionnaire.q1?.trim()) return
+    setSuggestingKeys(prev => new Set(prev).add(key))
+    try {
+      const response = await fetch(`/api/projects/${projectId}/planning/suggest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionnaire, mode: 'single', targetKey: key }),
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => null)
+        setErrorMsg(data?.error || (locale === 'ko' ? 'AI 답변 생성에 실패했습니다.' : 'AI suggestion failed.'))
+        return
+      }
+      const { suggestions } = await response.json()
+      setQuestionnaire(prev => ({ ...prev, ...suggestions }))
+    } catch {
+      setErrorMsg(locale === 'ko' ? 'AI 답변 생성 중 오류가 발생했습니다.' : 'Error generating AI suggestions.')
+    } finally {
+      setSuggestingKeys(prev => {
+        const next = new Set(prev)
+        next.delete(key)
+        return next
+      })
+    }
+  }
+
+  const handleSaveDraft = () => {
+    try {
+      const draftKey = `planning_draft_${projectId}`
+      const now = new Date()
+      const savedAt = now.toLocaleTimeString(locale === 'ko' ? 'ko-KR' : 'en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+      localStorage.setItem(draftKey, JSON.stringify({ questionnaire, savedAt }))
+      setDraftSavedAt(savedAt)
+      setToastMsg(locale === 'ko' ? '임시 저장되었습니다.' : 'Draft saved.')
+    } catch {
+      setToastMsg(locale === 'ko' ? '임시 저장에 실패했습니다.' : 'Failed to save draft.')
+    }
+  }
 
   const handleGenerate = async () => {
     const filledCount = Object.values(questionnaire).filter(v => v.trim()).length
@@ -191,6 +293,8 @@ export default function PlanningPage() {
     setIsGenerating(true)
     setStreamContent('')
     setErrorMsg('')
+    setShowOverlay(true)
+    setOverlayComplete(false)
 
     try {
       const response = await fetch(`/api/projects/${projectId}/planning/generate`, {
@@ -200,6 +304,7 @@ export default function PlanningPage() {
       })
 
       if (!response.ok) {
+        setShowOverlay(false)
         if (response.status === 429) {
           setErrorMsg(locale === 'ko' ? '요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요.' : 'Too many requests. Please wait a moment.')
         } else {
@@ -209,8 +314,23 @@ export default function PlanningPage() {
         return
       }
 
-      await readStream(response)
+      let overlayDismissed = false
+      await readStream(
+        response,
+        () => {
+          // 첫 번째 청크 수신 시 오버레이 완료 표시 후 닫기
+          if (!overlayDismissed) {
+            overlayDismissed = true
+            setOverlayComplete(true)
+            setTimeout(() => setShowOverlay(false), 1500)
+            // 생성 성공 → 임시 저장 데이터 삭제
+            try { localStorage.removeItem(`planning_draft_${projectId}`) } catch { /* skip */ }
+            setDraftSavedAt(null)
+          }
+        },
+      )
     } catch {
+      setShowOverlay(false)
       setErrorMsg(t('plan.errorGenerate', locale))
     } finally {
       setIsGenerating(false)
@@ -241,6 +361,35 @@ export default function PlanningPage() {
       }
 
       await readStream(response, undefined, () => setFeedback(''))
+    } catch {
+      setErrorMsg(t('plan.errorGenerate', locale))
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleDeepDive = async (sectionTitle: string, detail: string) => {
+    setIsGenerating(true)
+    setStreamContent('')
+    setErrorMsg('')
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}/planning/deep-dive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sectionTitle, detail, currentContent: document?.content }),
+      })
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          setErrorMsg(locale === 'ko' ? '요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요.' : 'Too many requests. Please wait a moment.')
+        } else {
+          setErrorMsg(t('plan.errorGenerate', locale))
+        }
+        return
+      }
+
+      await readStream(response)
     } catch {
       setErrorMsg(t('plan.errorGenerate', locale))
     } finally {
@@ -338,6 +487,16 @@ export default function PlanningPage() {
 
   const hasFinalized = allDocuments.some(doc => doc.is_finalized)
   const displayContent = streamContent || document?.content || ''
+  // 현재 보고 있는 스텝 (showForm이면 0, 아니면 1)
+  const activeStep: 0 | 1 = showForm && !isGenerating ? 0 : 1
+
+  const handleStepClick = (step: 0 | 1) => {
+    if (step === 0 && !isGenerating) {
+      setShowForm(true)
+    } else if (step === 1 && displayContent) {
+      setShowForm(false)
+    }
+  }
 
   // --- Render ---
 
@@ -350,7 +509,23 @@ export default function PlanningPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-[1440px] mx-auto px-4 md:px-10">
+      {/* 스텝 인디케이터 */}
+      <PlanningStepIndicator
+        locale={locale}
+        activeStep={activeStep}
+        hasDocument={!!document}
+        hasFinalized={hasFinalized}
+        onStepClick={handleStepClick}
+      />
+
+      {/* 생성 진행 오버레이 */}
+      <GenerationOverlay
+        locale={locale}
+        visible={showOverlay}
+        isComplete={overlayComplete}
+      />
+
       {/* 에러 메시지 */}
       {errorMsg && (
         <div className="mb-6 p-4 rounded-xl bg-error/10 border border-error/20 flex items-start gap-3">
@@ -367,82 +542,164 @@ export default function PlanningPage() {
         </div>
       )}
 
-      {/* 설문 폼 */}
-      {showForm && (
+      {/* 설문 폼 — 기획안이 이미 존재하면 읽기 전용 */}
+      {showForm && !isGenerating && (
         <QuestionnaireForm
           locale={locale}
           questionnaire={questionnaire}
           isGenerating={isGenerating}
+          draftSavedAt={draftSavedAt}
+          readOnly={!!document}
+          isSuggesting={isSuggesting}
+          suggestingKeys={suggestingKeys}
           onQuestionnaireChange={setQuestionnaire}
           onGenerate={handleGenerate}
+          onSaveDraft={handleSaveDraft}
+          onSuggestAll={handleSuggestAll}
+          onSuggestSingle={handleSuggestSingle}
         />
       )}
 
-      {/* 기획안 표시 */}
-      {displayContent && (
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-6 mb-6">
-          <div>
+      {/* 기획안 표시 — 설문 폼이 보일 때는 숨김 */}
+      {displayContent && !showForm && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 mb-6">
+          {/* 좌측: 헤더 액션 + 문서 본문 */}
+          <div className="lg:col-span-8 space-y-6">
+            {/* 헤더 액션 바 */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-surface-container-low p-6 md:p-8 rounded-xl border-t border-outline-variant/10 shadow-xl gap-4 sm:gap-6">
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 items-start">
+                  {document && (
+                    <span className="px-3 py-1 bg-secondary/10 text-secondary text-[10px] font-bold rounded-full border border-secondary/20 tracking-wider uppercase">
+                      v{document.version} {document.is_finalized ? (locale === 'ko' ? '확정' : 'FINALIZED') : ''}
+                    </span>
+                  )}
+                  <h1 className="text-2xl md:text-3xl font-black text-on-surface tracking-tight">
+                    {project?.title || (locale === 'ko' ? '기획안' : 'Plan')}
+                  </h1>
+                </div>
+                {document && (
+                  <p className="text-on-surface-variant text-sm font-medium">
+                    {locale === 'ko' ? '최종 수정일: ' : 'Last modified: '}
+                    {new Date(document.created_at).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US', {
+                      year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                    })}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-3 min-h-[40px] items-center">
+                <button
+                  onClick={handleExportPdf}
+                  className="flex items-center h-10 bg-surface-container-high hover:bg-surface-container-highest transition-colors text-sm font-bold text-on-surface rounded-lg border border-outline-variant/20 active:scale-95 px-3 justify-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-lg text-primary">picture_as_pdf</span>
+                  PDF
+                </button>
+                {document?.is_finalized && (
+                  pptLoading ? (
+                    <span className="flex items-center h-10 px-3 rounded-lg bg-surface-container-high/50 backdrop-blur-sm border border-outline-variant/10 text-on-surface-variant/40 text-sm gap-1 animate-pulse">
+                      <span className="material-symbols-outlined text-sm">slideshow</span>
+                      PPT
+                    </span>
+                  ) : (
+                    <PptStatusButton
+                      locale={locale}
+                      pptStatus={pptStatus}
+                      pptOutputUrl={pptOutputUrl}
+                      pptRequesting={pptRequesting}
+                      onRequestPpt={handleRequestPpt}
+                    />
+                  )
+                )}
+                {!hasFinalized && !isGenerating && (
+                  <button
+                    onClick={handleFinalize}
+                    className="flex items-center h-10 bg-gradient-to-r from-primary-container to-secondary text-sm font-bold rounded-lg shadow-lg shadow-primary-container/20 active:scale-95 transition-transform px-4 text-white justify-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                    {locale === 'ko' ? '기획안 확정' : 'Finalize Plan'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* 기획안 본문 */}
             <PlanViewer
               locale={locale}
               document={document}
               displayContent={displayContent}
               isGenerating={isGenerating}
-              hasFinalized={hasFinalized}
-              showForm={showForm}
-              pptStatus={pptStatus}
-              pptOutputUrl={pptOutputUrl}
-              pptRequesting={pptRequesting}
               contentRef={contentRef}
-              onShowForm={() => setShowForm(true)}
-              onFinalize={handleFinalize}
-              onExportPdf={handleExportPdf}
-              onRequestPpt={handleRequestPpt}
             />
-
-            {/* 피드백 / 딥다이브 / 확정 */}
-            {document && !hasFinalized && !isGenerating && (
-              <div className="space-y-4">
-                <FeedbackPanel
-                  locale={locale}
-                  feedback={feedback}
-                  onFeedbackChange={setFeedback}
-                  onSubmit={handleFeedback}
-                />
-
-                {/* 기획안 확정 */}
-                <div className="rounded-2xl p-6 border border-primary-container/30 bg-gradient-to-br from-primary-container/10 to-surface-container-low">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary-container/20 flex items-center justify-center">
-                      <span className="material-symbols-outlined text-primary text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-on-surface">
-                        {locale === 'ko' ? '기획안 확정' : 'Finalize Plan'}
-                      </h3>
-                      <p className="text-[11px] text-on-surface-variant">
-                        {locale === 'ko' ? '확정 후 디자인 단계로 이동합니다' : 'Move to Design phase after finalizing'}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleFinalize}
-                    className="w-full py-3.5 text-sm font-bold text-white bg-primary-container rounded-xl hover:bg-primary-container/90 hover:shadow-lg hover:shadow-primary-container/30 active:scale-[0.99] transition-all flex items-center justify-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-lg">task_alt</span>
-                    {locale === 'ko' ? '기획안 확정하기' : 'Finalize Plan'}
-                    <span className="material-symbols-outlined text-lg">arrow_forward</span>
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
-          <VersionHistory
-            locale={locale}
-            documents={allDocuments}
-            activeDocId={document?.id}
-            onSelect={(doc) => { setDocument(doc); setStreamContent('') }}
-          />
+          {/* 우측: 사이드바 */}
+          <div className="lg:col-span-4 space-y-6">
+            {/* 버전 히스토리 */}
+            <details className="sidebar-card group rounded-xl overflow-hidden" open>
+              <summary className="flex items-center justify-between p-6 cursor-pointer hover:bg-surface-container-high transition-all">
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-primary text-xl font-bold">history</span>
+                  <h3 className="text-sm font-bold text-on-surface tracking-tight">
+                    {locale === 'ko' ? '버전 히스토리' : 'Version History'}
+                  </h3>
+                </div>
+                <span className="material-symbols-outlined text-primary group-open:rotate-180 transition-transform duration-300 font-bold">expand_more</span>
+              </summary>
+              <div className="px-6 pb-6 pt-0">
+                <VersionHistory
+                  locale={locale}
+                  documents={allDocuments}
+                  activeDocId={document?.id}
+                  onSelect={(doc) => { setDocument(doc); setStreamContent('') }}
+                />
+              </div>
+            </details>
+
+            {/* 섹션 딥다이브 */}
+            {document && !hasFinalized && !isGenerating && (
+              <details className="sidebar-card group rounded-xl overflow-hidden">
+                <summary className="flex items-center justify-between p-6 cursor-pointer hover:bg-surface-container-high transition-all">
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-secondary text-xl font-bold">insights</span>
+                    <h3 className="text-sm font-bold text-on-surface tracking-tight">
+                      {locale === 'ko' ? '섹션 딥다이브' : 'Section Deep Dive'}
+                    </h3>
+                  </div>
+                  <span className="material-symbols-outlined text-secondary group-open:rotate-180 transition-transform duration-300 font-bold">expand_more</span>
+                </summary>
+                <SectionDeepDive
+                  locale={locale}
+                  documentContent={displayContent}
+                  onSubmit={handleDeepDive}
+                  disabled={isGenerating}
+                />
+              </details>
+            )}
+
+            {/* 피드백 & 리뷰 */}
+            {document && !hasFinalized && !isGenerating && (
+              <details className="sidebar-card group rounded-xl overflow-hidden">
+                <summary className="flex items-center justify-between p-6 cursor-pointer hover:bg-surface-container-high transition-all">
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-tertiary text-xl font-bold">reviews</span>
+                    <h3 className="text-sm font-bold text-on-surface tracking-tight">
+                      {locale === 'ko' ? '피드백 & 리뷰' : 'Feedback & Review'}
+                    </h3>
+                  </div>
+                  <span className="material-symbols-outlined text-tertiary group-open:rotate-180 transition-transform duration-300 font-bold">expand_more</span>
+                </summary>
+                <div className="p-6 pt-2">
+                  <FeedbackPanel
+                    locale={locale}
+                    feedback={feedback}
+                    onFeedbackChange={setFeedback}
+                    onSubmit={handleFeedback}
+                  />
+                </div>
+              </details>
+            )}
+          </div>
         </div>
       )}
 
@@ -455,6 +712,14 @@ export default function PlanningPage() {
           >
             {t('plan.goDesign', locale)}
           </button>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-surface-container-highest border border-secondary/50 text-secondary px-6 py-3 rounded-full shadow-2xl z-50 flex items-center gap-2 animate-bounce">
+          <span className="material-symbols-outlined text-sm">check_circle</span>
+          <span className="font-bold">{toastMsg}</span>
         </div>
       )}
     </div>

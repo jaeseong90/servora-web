@@ -10,6 +10,8 @@ interface PptStatusButtonProps {
   onRequestPpt: () => void
 }
 
+const BASE = 'h-10 px-3 text-sm font-bold rounded-lg flex items-center justify-center gap-1 bg-surface-container-high border border-outline-variant/20 text-on-surface'
+
 export default function PptStatusButton({
   locale,
   pptStatus,
@@ -19,45 +21,19 @@ export default function PptStatusButton({
 }: PptStatusButtonProps) {
   if (pptStatus === 'PENDING' || pptStatus === 'BUILDING') {
     return (
-      <span className="px-3 py-1.5 text-xs font-medium text-primary bg-primary/10 border border-primary/20 rounded-lg flex items-center gap-1">
-        <span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        {pptStatus === 'PENDING'
-          ? (locale === 'ko' ? 'PPT 대기' : 'PPT Queued')
-          : (locale === 'ko' ? 'PPT 생성 중' : 'PPT Building')}
+      <span className={`${BASE} opacity-60`}>
+        <span className="w-3.5 h-3.5 border-2 border-on-surface-variant border-t-transparent rounded-full animate-spin" />
+        PPT
       </span>
     )
   }
 
-  if (pptStatus === 'COMPLETED') {
-    return pptOutputUrl ? (
-      <a
-        href={pptOutputUrl}
-        download
-        className="px-3 py-1.5 text-xs font-medium text-secondary bg-secondary/10 border border-secondary/20 rounded-lg hover:bg-secondary/20 transition-colors flex items-center gap-1"
-      >
-        <span className="material-symbols-outlined text-sm">download</span>
-        {locale === 'ko' ? 'PPT 다운로드' : 'Download PPT'}
-      </a>
-    ) : (
-      <span className="px-3 py-1.5 text-xs font-medium text-secondary bg-secondary/10 border border-secondary/20 rounded-lg flex items-center gap-1">
-        <span className="material-symbols-outlined text-sm">check_circle</span>
-        {locale === 'ko' ? 'PPT 완료' : 'PPT Ready'}
-      </span>
-    )
-  }
-
-  if (pptStatus === 'FAILED') {
+  if (pptStatus === 'COMPLETED' && pptOutputUrl) {
     return (
-      <button
-        onClick={onRequestPpt}
-        disabled={pptRequesting}
-        className="px-3 py-1.5 text-xs font-medium text-error bg-error/10 border border-error/20 rounded-lg hover:bg-error/20 transition-colors flex items-center gap-1 disabled:opacity-50"
-      >
-        <span className="material-symbols-outlined text-sm">refresh</span>
-        {pptRequesting
-          ? (locale === 'ko' ? '요청 중...' : 'Requesting...')
-          : (locale === 'ko' ? 'PPT 재요청' : 'PPT Retry')}
-      </button>
+      <a href={pptOutputUrl} download className={`${BASE} hover:bg-surface-container-highest transition-colors active:scale-95`}>
+        <span className="material-symbols-outlined text-lg text-primary">slideshow</span>
+        PPT
+      </a>
     )
   }
 
@@ -65,10 +41,14 @@ export default function PptStatusButton({
     <button
       onClick={onRequestPpt}
       disabled={pptRequesting}
-      className="px-3 py-1.5 text-xs font-medium text-on-surface-variant bg-surface-container-high rounded-lg hover:bg-surface-container-highest transition-colors flex items-center gap-1 disabled:opacity-50"
+      className={`${BASE} hover:bg-surface-container-highest transition-colors active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed`}
     >
-      <span className="material-symbols-outlined text-sm">slideshow</span>
-      {pptRequesting ? (locale === 'ko' ? '요청 중...' : 'Requesting...') : 'PPT'}
+      {pptRequesting ? (
+        <span className="w-3.5 h-3.5 border-2 border-on-surface-variant border-t-transparent rounded-full animate-spin" />
+      ) : (
+        <span className="material-symbols-outlined text-lg text-primary">slideshow</span>
+      )}
+      PPT
     </button>
   )
 }
