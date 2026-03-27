@@ -6,6 +6,10 @@ export type UsageAction =
   | 'planning_feedback'
   | 'planning_deep_dive'
   | 'design_guidelines'
+  | 'design_brand'
+  | 'design_architecture'
+  | 'design_screen_detail'
+  | 'design_entity_extract'
   | 'mvp_generate'
   | 'planning_suggest'
 

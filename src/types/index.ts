@@ -45,6 +45,91 @@ export interface DesignPreference {
   layout_style: string
   font_style: string
   corner_style: string
+  // 4-Phase 블루프린트
+  design_blueprint: DesignBlueprint | null
+  current_phase: number
+  phase_status: Record<string, PhaseStatus>
+  // 레거시 (하위 호환)
+  mvp_guidelines?: string | null
+  guidelines_version?: number
+  guidelines_status?: string
+}
+
+export type PhaseStatus = 'pending' | 'generating' | 'review' | 'approved'
+
+// ── 디자인 블루프린트 ──
+
+export interface BrandIdentity {
+  tone: string
+  personality: string
+  colors: {
+    primary: string
+    secondary: string
+    success: string
+    warning: string
+    danger: string
+  }
+  colorMode: 'LIGHT' | 'DARK'
+  typography: string
+  layoutStyle: 'SIDEBAR' | 'TOP_NAV' | 'MINIMAL'
+  cornerStyle: string
+}
+
+export interface ArchitectureScreen {
+  id: string
+  displayName: string
+  description: string
+  audience: 'admin' | 'customer'
+  keyFeatures: string[]
+}
+
+export interface ServiceArchitecture {
+  coreValue: string
+  screens: ArchitectureScreen[]
+  excludedFeatures: string[]
+}
+
+export interface ScreenSection {
+  name: string
+  layout: string
+  components: string[]
+  interactions: string[]
+}
+
+export interface ManagedInfoItem {
+  name: string
+  description: string
+  required: boolean
+}
+
+export interface ScreenDetail {
+  screenId: string
+  sections: ScreenSection[]
+  managedInfo: ManagedInfoItem[]
+  keyFeatures: string[]
+  emptyState: string
+  statusColors?: Record<string, string>
+}
+
+export interface BlueprintEntity {
+  name: string
+  displayName: string
+  fields: {
+    name: string
+    type: string
+    displayName: string
+    required: boolean
+    options?: string[]
+    relationTarget?: string
+  }[]
+}
+
+export interface DesignBlueprint {
+  brand: BrandIdentity | null
+  architecture: ServiceArchitecture | null
+  screenDetails: ScreenDetail[]
+  entities: BlueprintEntity[]
+  finalized: boolean
 }
 
 // MVP 빌드 큐
