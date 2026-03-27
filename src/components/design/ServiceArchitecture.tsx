@@ -7,6 +7,15 @@ import DesignFeedbackPanel from './DesignFeedbackPanel'
 import DesignGenerationOverlay from './DesignGenerationOverlay'
 import ApproveButton from './ApproveButton'
 
+function toStringArray(arr: unknown): string[] {
+  if (!Array.isArray(arr)) return []
+  return arr.map(item => {
+    if (typeof item === 'string') return item
+    if (item && typeof item === 'object') return Object.values(item).join(', ')
+    return String(item)
+  })
+}
+
 interface ServiceArchitectureProps {
   locale: Locale
   projectId: string
@@ -70,14 +79,14 @@ export default function ServiceArchitecture({
     }
   }
 
-  // 자동 생성 트리거
+  // 자동 생성 트리거: Phase 2에 진입하면 architecture가 없을 때 자동 생성
   const autoTriggered = useRef(false)
   useEffect(() => {
-    if (!architecture && !generating && phaseStatus !== 'pending' && !autoTriggered.current) {
+    if (!architecture && !generating && !error && !autoTriggered.current) {
       autoTriggered.current = true
       handleGenerate()
     }
-  }, [architecture, generating, phaseStatus]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [architecture, generating, error]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-6">
@@ -147,9 +156,9 @@ export default function ServiceArchitecture({
                   </div>
                   <h4 className="text-sm font-bold text-on-surface mb-1">{screen.displayName}</h4>
                   <p className="text-xs text-on-surface-variant leading-relaxed">{screen.description}</p>
-                  {screen.keyFeatures.length > 0 && (
+                  {toStringArray(screen.keyFeatures).length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {screen.keyFeatures.map((f, i) => (
+                      {toStringArray(screen.keyFeatures).map((f, i) => (
                         <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant">
                           {f}
                         </span>

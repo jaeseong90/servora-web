@@ -4,6 +4,15 @@ import { useState } from 'react'
 import type { Locale } from '@/lib/i18n'
 import type { DesignBlueprint } from '@/types'
 
+function toStringArray(arr: unknown): string[] {
+  if (!Array.isArray(arr)) return []
+  return arr.map(item => {
+    if (typeof item === 'string') return item
+    if (item && typeof item === 'object') return Object.values(item).join(', ')
+    return String(item)
+  })
+}
+
 interface FinalBlueprintProps {
   locale: Locale
   projectId: string
@@ -118,13 +127,13 @@ export default function FinalBlueprint({
         )}
 
         {/* Key Features Highlight */}
-        {blueprint.screenDetails.some(d => d.keyFeatures.length > 0) && (
+        {blueprint.screenDetails.some(d => toStringArray(d.keyFeatures).length > 0) && (
           <div className="p-4 rounded-xl bg-purple-500/5 border border-purple-500/10">
             <p className="text-xs font-bold text-purple-400 mb-2">
               {locale === 'ko' ? '특별한 기능들' : 'Key Features'}
             </p>
             <ul className="space-y-1">
-              {blueprint.screenDetails.flatMap(d => d.keyFeatures).map((f, i) => (
+              {blueprint.screenDetails.flatMap(d => toStringArray(d.keyFeatures)).map((f, i) => (
                 <li key={i} className="text-sm text-on-surface flex items-center gap-2">
                   <span className="text-purple-400">✦</span>
                   {f}
